@@ -1,0 +1,8 @@
+[extend]
+useDefault = true
+
+[[rules]]
+id = "databricks-workspace-host"
+description = "Databricks workspace hostname"
+regex = '''adb-\d+\.\d+\.azuredatabricks\.net'''
+keywords = ["azuredatabricks"]
