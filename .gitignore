@@ -1,0 +1,31 @@
+# Databricks / bundles
+.databricks/
+.databrickscfg
+databricks.local.yml
+*.tfstate*
+
+# Secrets and env
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python / notebooks
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+*.ipynb        # use source-format .py/.sql notebooks; remove this line if you deliberately commit clean notebooks
+
+# Data (synthetic data only, and small)
+data/raw/
+*.parquet
+*.csv
+
+# Claude Code local files
+.claude/settings.local.json
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
