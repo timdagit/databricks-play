@@ -55,17 +55,25 @@ deploy. Record each departure in `docs/decisions.md`.
   stay thin.
 
 ## Python
-- Use `./.venv` and `requirements.txt` (and `.venv/` in `.gitignore`). A
-  `pyproject.toml` exists for the `bakehouse_core` wheel and its build only.
-  Don't introduce uv unless Tim agrees.
-- Python versions (checked against the docs, Oct 2026): serverless
-  environment version 5 runs 3.12.3, and Databricks Apps that use pip
-  (`requirements.txt`) run 3.11. Only uv-based apps can choose their version.
-  So `./.venv` is Python 3.12 (jobs and tests), `requires-python = ">=3.11"`,
-  CI tests both 3.11 and 3.12, and the app's Docker image is
-  `python:3.11-slim` to match Apps. Don't use 3.12-only syntax in code the app
-  imports. This overrides the global 3.14 default. Re-check the versions in
-  workstream 0 before pinning.
+- Use uv, not pip or `python -m venv`. This overrides the global venv +
+  `requirements.txt` rule. uv still keeps the environment in `./.venv`
+  (ignored by git) and creates it itself. Dependencies live in
+  `pyproject.toml` and the committed `uv.lock`; there is no
+  `requirements.txt`. Commands: `uv sync` (create/update `.venv`),
+  `uv add <pkg>` / `uv remove <pkg>` (edit `pyproject.toml` and the lock),
+  `uv run <cmd>` (run inside the env), `uv lock` (refresh the lock).
+- Tim is new to uv. When I first use a uv command or concept, say in one line
+  how it differs from venv + pip.
+- Python version: pinned in `.python-version` and `requires-python`. uv
+  downloads the interpreter itself. Serverless environment version 5 runs
+  3.12.3 and the jobs run `bakehouse_core`, so the project uses 3.12. uv-based
+  Databricks Apps can choose any version, but the app shares the package, so
+  it matches. Re-check against the docs in workstream 0 before pinning.
+- Databricks Apps: the app directory uses `pyproject.toml` + `uv.lock` and
+  must NOT contain a `requirements.txt` (pip takes precedence if one exists).
+  How the app gets `bakehouse_core` (a path outside the app folder isn't
+  deployed) is a workstream 8 question: likely the built wheel in a volume.
+- Wheel build: bundle `artifacts` runs `uv build --wheel`.
 
 ## Declarative Automation Bundles (DABs)
 
