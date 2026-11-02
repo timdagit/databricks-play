@@ -1,93 +1,130 @@
-# Databricks PoC repo
+# Bakehouse Databricks PoC
 
-Public GitHub repo of small, self-contained Databricks learning PoCs
-(Lakeflow Designer, Databricks Apps, Lakebase, others). Azure workspace.
+One large, public PoC on Azure Databricks. It replaces the earlier idea of
+many small PoCs. The spec is `docs/SPEC.md` and the build order is
+`docs/BUILD_PLAN.md`. Guardrails, known facts and working style come from the
+guide imported here:
+
+@docs/CLAUDE_CODE_GUIDE.md
+
+Where this file and the guide or spec differ, this file wins, because the docs
+were written outside this repo. Known differences: Terraform lives in az-inf,
+not `infra/`; Python uses venv + `requirements.txt`, not uv; I never push or
+deploy. Record each departure in `docs/decisions.md`.
 
 ## Hard rules
-- NEVER read, print or commit ~/.databrickscfg, ~/.databricks/, .env files or tokens.
+- NEVER read, print or commit ~/.databrickscfg, ~/.databricks/, .env files,
+  tfvars or tokens. When discovery produces identifying values (hosts, tenant,
+  subscription, workspace or account IDs, emails), write them straight to a
+  gitignored file and do not echo them in my output.
 - NEVER hardcode workspace hosts, tenant/subscription IDs, warehouse IDs,
   email addresses or storage account names. See "Configuration rules".
-- Authenticate with the CLI profile (`-p personal`); no PATs. Do not set
-  `workspace.host` or tokens in bundles.
-- Synthetic or public datasets only. No employer or client data, and no data
-  files in the repo.
-- No notebook outputs in commits. Use source-format notebooks (.py / .sql).
-- Ask before running `git push`, `databricks bundle deploy` or
-  `databricks bundle destroy`. Never use `--no-verify`.
+- Locally, authenticate with the CLI profile (`-p personal`); no PATs. CI uses
+  service-principal OAuth from environment variables. Do not set
+  `workspace.host` or tokens in bundle files.
+- Synthetic or public data only. `samples.bakehouse` is Databricks' public
+  sample. No employer or client data, and no data files in the repo (seed data
+  is `.sql`).
+- Notebooks are source-format `.py` / `.sql` with no outputs. The only
+  `.ipynb` files allowed are `*.designer.ipynb`. Tim edits those on the
+  Designer canvas; I never write them. If one contains a workspace URL or ID,
+  tell Tim rather than editing it.
+- Tim runs, not me: `git push`, `databricks bundle deploy` / `run` / `destroy`,
+  `terraform apply` / `destroy` / `import`, and anything that changes GitHub
+  settings or secrets. I give the exact command. Never use `--no-verify`.
+- Commands that reach Azure, Databricks or GitHub may be blocked by my
+  sandbox. Ask Tim to run them (`! <command>`) and paste the output. Do not
+  work around a block.
 
-## Structure
-- One folder per PoC, each with a README.md (see "Per-PoC README checklist").
-- Shared helpers go in common/, only if used by 2+ PoCs.
+## Where things live
+- One bundle at the repo root, `bundle.name: bakehouse`. Layout follows spec
+  §5.1, minus `infra/`.
+- **Infrastructure is all in az-inf** (`/Users/timda/HOME/GIT/az-inf`, with
+  its own CLAUDE.md and skill). Do not create Terraform in this repo. az-inf
+  already provides the workspace, ADLS storage, access connector, Unity
+  Catalog storage credential and external location, and a `learning` catalog.
+  Reuse them before proposing anything new. Leave the `learning` catalog
+  alone: this project gets its own `bakehouse_dev` catalog on the az-inf ADLS
+  account (see `docs/az-inf-requirements.md`). When this project needs an
+  az-inf change, write it up for Tim (layer, resources, variables, manual
+  steps) in `docs/az-inf-requirements.md`. I don't edit az-inf from here
+  unless asked.
+- GitHub Environments and their secrets are not Terraform-managed. Give Tim
+  the `gh` commands or UI steps.
+- Reusable logic lives in `src/bakehouse_core`. Jobs, notebooks and the app
+  stay thin.
 
-## Before every commit
-- Run `gitleaks git --staged --redact` and grep the diff for
-  "azuredatabricks", "@", and "adb-".
-- Keep commit messages short and descriptive.
+## Python
+- Use `./.venv` and `requirements.txt` (and `.venv/` in `.gitignore`). A
+  `pyproject.toml` exists for the `bakehouse_core` wheel and its build only.
+  Don't introduce uv unless Tim agrees.
+- Python versions (checked against the docs, Oct 2026): serverless
+  environment version 5 runs 3.12.3, and Databricks Apps that use pip
+  (`requirements.txt`) run 3.11. Only uv-based apps can choose their version.
+  So `./.venv` is Python 3.12 (jobs and tests), `requires-python = ">=3.11"`,
+  CI tests both 3.11 and 3.12, and the app's Docker image is
+  `python:3.11-slim` to match Apps. Don't use 3.12-only syntax in code the app
+  imports. This overrides the global 3.14 default. Re-check the versions in
+  workstream 0 before pinning.
 
-
-## Working with Declarative Automation Bundles (DABs)
-
-### Layout
-- Each PoC is its own bundle (own `databricks.yml` in its folder), with
-  resources split into `**/resources/*.yml` and pulled in via `include:`.
-- `bundle.name` must be unique per PoC (e.g. `poc01_hello`) so deployed
-  state and workspace folders never collide.
-- Source code lives beside the bundle (`src/`, `app/`, `notebooks/`);
-  YAML only describes resources and wiring.
-- Do not create a shared root bundle unless I ask.
+## Declarative Automation Bundles (DABs)
 
 ### Configuration rules
-- Define every environment-specific value as a `variables:` entry with a
-  harmless placeholder default (`catalog`, `schema`, `warehouse_id`, etc.).
-  Reference them as `${var.catalog}`. Real values come from `--var`,
-  `BUNDLE_VAR_<name>` environment variables, the gitignored
-  `databricks.local.yml`, or a target-level override that is itself
-  placeholder-only.
-- Targets: a single `dev` target with `mode: development` and `default: true`.
-  Dev mode prefixes resource names with the user and pauses schedules, which is
-  what I want for experiments. Do not add a `prod` target.
-- Prefer serverless compute for jobs and pipelines. Do not define always-on
-  clusters.
-- Each PoC uses its own schema (e.g. `${var.catalog}.poc01_hello`) so it
-  can be dropped cleanly.
+- Every environment-specific value is a `variables:` entry with a harmless
+  placeholder default (`catalog`, `warehouse_id`, etc.), referenced as
+  `${var.catalog}`. Real values come from `--var`, `BUNDLE_VAR_<name>`, the
+  gitignored `databricks.local.yml`, or a placeholder-only target override.
+- Targets: `dev` is the default (`mode: development`) and the one that
+  matters. Keep `test` and `prod` minimal and valid per the spec, but don't
+  invest in them until Tim asks.
+- In dev mode, check what actually gets prefixed (schemas, apps, workspace
+  paths) and set `presets` deliberately so names match the spec. Record the
+  result in `docs/decisions.md`.
+- Serverless only. Never define always-on clusters or classic warehouses.
 
-### Workflow (in this order)
+### Workflow
 1. Edit YAML and source files.
-2. `databricks bundle validate -t dev -p personal`. Fix all errors and warnings.
-3. Show me the diff and the planned changes. If the installed CLI has
-   `databricks bundle plan`, use it. Otherwise explain what the deploy will create.
-4. **Ask before** `databricks bundle deploy`. Never deploy, run or destroy unprompted.
-5. After deploy, `databricks bundle summary` to list what exists.
-6. `databricks bundle run <resource_key>` only when I ask.
-7. When a PoC is finished, offer `databricks bundle destroy` and ask first.
-   Apps and Lakebase instances can keep costing money while idle.
+2. `databricks bundle validate -t dev -p personal`. If the sandbox blocks it,
+   ask Tim to run it. Fix all errors and warnings.
+3. Show Tim the diff and planned changes (`databricks bundle plan` if the CLI
+   has it, otherwise a description of what the deploy creates).
+4. Tim deploys. Afterwards he can run `databricks bundle summary` to list what
+   exists.
+5. When work is finished, remind Tim what keeps costing money (apps,
+   Lakebase) and offer the `bundle destroy` command.
 
 ### Keeping the bundle as the source of truth
-- Don't edit bundle-managed resources in the workspace UI, because the next
-  deploy will overwrite the change or fight it.
-- If something was built in the UI first (Lakeflow Designer work, a dashboard,
-  an existing job), pull it into code with `databricks bundle generate`
-  (for supported resource types) and commit the result. Otherwise use
-  `databricks bundle deployment bind` to adopt it. Check the current docs
-  for which types are supported.
-- Anything that cannot be expressed in a bundle goes in the PoC's README as
-  manual steps, with screenshots stored without workspace URLs or names.
-- Check the CLI's `--help` and the current docs before using a resource type
-  or command you are not certain exists in the installed version
-  (`databricks -v`). Don't guess YAML keys.
+- Don't edit bundle-managed resources in the workspace UI. The next deploy
+  would overwrite the change or fight it.
+- If something was built in the UI first (Designer, a dashboard), pull it into
+  code with `databricks bundle generate` where supported, or adopt it with
+  `databricks bundle deployment bind`. Anything that can't be expressed in the
+  bundle goes in the README as manual steps, with screenshots stripped of
+  workspace URLs and names.
+- Check `--help`, `databricks bundle schema` and the current docs before using
+  a resource type or field I'm not certain exists in the installed CLI. Don't
+  guess YAML keys.
 
-### Resource-specific notes
-- **Apps:** define under `resources.apps`, with the code in `app/` and an
-  `app.yaml` for the start command. Apps run as their own service principal,
-  so grant it access to any tables or warehouses it needs through
-  `resources`. Do not give it more than it needs.
-- **Jobs / pipelines:** use `source`-format notebooks or plain Python/SQL
-  files.
-- **Lakebase and other new features:** treat the YAML schema as changing.
-  Validate early and keep the PoC minimal.
-- **Dashboards / Lakeflow Designer:** may be UI-first. Document what was built
-  in the README and generate or bind where possible.
+### Resource notes
+- **Apps:** under `resources.apps`, code in `apps/param_admin/` with an
+  `app.yaml`. The app runs as its own service principal, so grant it only what
+  it needs through `resources`.
+- **Lakebase and other new features:** the YAML schema is changing. Validate
+  early and keep it minimal.
+- **Designer:** UI-first. Wire the committed `*.designer.ipynb` files in as
+  `notebook_task`s and document what was built.
 
-### Per-PoC README checklist
-Goal, what was built, variables needed (names only, no values), deploy
-commands, what I learned, how to destroy it.
+## Docs
+- Root `README.md`: goal, what was built, variable names (no values), deploy
+  commands, what was learned, how to destroy it.
+- Keep `docs/SPEC.md` accurate when the implementation departs from it with
+  Tim's agreement, in the same PR.
+
+## Before every commit
+- The pre-commit hook runs gitleaks, and CI runs it again on push. Don't
+  bypass either.
+- Also grep the staged diff for "azuredatabricks", "adb-" and "@". Doc text
+  that names these patterns is an expected hit.
+- Follow the global commit conventions. Keep messages short and descriptive.
+- Workflows that deploy or run on merge use a `paths` filter, so docs-only
+  changes don't trigger them.
