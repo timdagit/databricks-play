@@ -18,6 +18,7 @@ only on `(seed, virtual_date)`.
 from __future__ import annotations
 
 import random
+import re
 from collections.abc import Iterable
 from datetime import datetime, timedelta
 
@@ -49,8 +50,12 @@ NEGATIVE_REVIEWS = (
 
 
 def parse_scenarios(text: str) -> list[str]:
-    """Turn the job parameter, e.g. 'duplicates, null_spike', into a validated list."""
-    names = [n.strip() for n in text.split(",") if n.strip()]
+    """Turn the job parameter, e.g. 'duplicates, null_spike', into a validated list.
+
+    Names may be separated by commas, semicolons or spaces. The CLI's `--params` uses commas
+    to separate parameters, so `scenarios=duplicates;null_spike` is the form to use there.
+    """
+    names = [n for n in re.split(r"[,;\s]+", text) if n]
     unknown = sorted(set(names) - set(SCENARIOS))
     if unknown:
         raise ValueError(

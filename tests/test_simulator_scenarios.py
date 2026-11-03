@@ -152,6 +152,8 @@ def test_all_scenarios_work_on_a_synthetic_day(source):
 def test_parse_scenarios():
     assert scenarios.parse_scenarios("") == []
     assert scenarios.parse_scenarios(" duplicates , null_spike ") == ["duplicates", "null_spike"]
+    assert scenarios.parse_scenarios("duplicates;null_spike") == ["duplicates", "null_spike"]
+    assert scenarios.parse_scenarios("duplicates null_spike") == ["duplicates", "null_spike"]
     with pytest.raises(ValueError, match="nope"):
         scenarios.parse_scenarios("duplicates,nope")
 
