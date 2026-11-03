@@ -121,3 +121,8 @@ Departures from `SPEC.md` and `CLAUDE_CODE_GUIDE.md`, and choices made along the
 
 - **Proven:** the app starts on Databricks Apps, creates the `params` schema and the seed in Lakebase, and saves versions there. The signed-in user's email arrives in `X-Forwarded-Email` and is recorded as `updated_by`. Spark reads the same table through the Unity Catalog registration (`<params catalog>.params.param_versions`).
 - **Note:** decimal values are stored without trailing zeros (`0.3`), which parses back to the same number.
+
+## 2026-11-03: the ETL reads parameters from Lakebase (proven)
+
+- **Proven end to end:** `underperform_pct` saved as 0.40 in the app (version 3, from the start) went to Lakebase. `load_params` read it through the Unity Catalog registration and logged it (value `0.4`, version 3). `recompute_gold` then flagged 1 franchise on day 19 instead of 3 at 0.20.
+- **Default.** `param_backend` now defaults to `lakebase`, because the app writes there and a plain deploy must not point the ETL back at Delta. Workstream 10 adds the Delta backend to the app for the comparison, and switching is one variable.

@@ -32,8 +32,8 @@ variables:
     description: Unity Catalog name that Lakebase is registered as, where the ETL reads parameters.
     default: bakehouse_params_${bundle.target}
   param_backend:
-    description: Where the ETL reads parameters from, `delta` (ops tables) or `lakebase` (its catalog).
-    default: delta
+    description: Where the ETL reads parameters from, `lakebase` (its catalog) or `delta` (ops tables).
+    default: lakebase
   job_duration_warning_seconds:
     description: A run longer than this raises a health warning, well before the timeout.
     default: 600
