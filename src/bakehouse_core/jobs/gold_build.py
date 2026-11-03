@@ -26,12 +26,22 @@ LOAD_PARAMS_JOB = "load_params"
 MODES = ("incremental", "recompute_gold")
 
 
-def days_to_build(mode: str, clock_date: date, last_built: date | None) -> list[date]:
-    """The virtual days to build, oldest first."""
+def days_to_build(
+    mode: str, clock_date: date, last_built: date | None, from_date: date | None = None
+) -> list[date]:
+    """The virtual days to build, oldest first.
+
+    `incremental` builds the days after the last successful run. `recompute_gold` builds every
+    day, or only the days from `from_date` when it is given (a changed parameter only affects
+    days from its effective date). `from_date` is ignored by `incremental`, and a date before the
+    first day just means the first day.
+    """
     if mode not in MODES:
         raise ValueError(f"mode must be one of {', '.join(MODES)}, got {mode!r}")
     if mode == "incremental" and last_built is not None:
         start = last_built + timedelta(days=1)
+    elif mode == "recompute_gold" and from_date is not None:
+        start = max(from_date, START_DATE)
     else:
         start = START_DATE
     count = (clock_date - start).days + 1
@@ -78,6 +88,7 @@ def run_gold_build(
     catalog: str,
     *,
     mode: str = "incremental",
+    from_date: date | None = None,
     run_id: str | None = None,
     triggered_by: str = "manual",
 ) -> dict[str, Any]:
@@ -85,6 +96,8 @@ def run_gold_build(
     started = datetime.now(UTC)
     state = store.read_clock()
     details: dict[str, Any] = {"mode": mode}
+    if from_date is not None:
+        details["from_date"] = from_date.isoformat()
     status = "failed"
     try:
         if state is None:
@@ -94,7 +107,7 @@ def run_gold_build(
             raise RuntimeError(f"no load_params entry for run {run_id}; run load_params first")
         run_params = snapshot.values_from_details(params_entry.details)
 
-        days = days_to_build(mode, state.virtual_date, store.last_success_date(JOB))
+        days = days_to_build(mode, state.virtual_date, store.last_success_date(JOB), from_date)
         details["days"] = [d.isoformat() for d in days]
         tables = GoldTables(spark, catalog)
         tables.ensure_tables()
@@ -139,6 +152,9 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--mode", default="incremental", choices=MODES)
     parser.add_argument("--param-backend", default="delta", choices=["delta", "lakebase"])
     parser.add_argument("--params-catalog", default="")
+    parser.add_argument(
+        "--from-date", default="", help="recompute_gold only: first day to rebuild (YYYY-MM-DD)"
+    )
     parser.add_argument("--run-id", default="")
     parser.add_argument("--triggered-by", default="manual")
     args = parser.parse_args(argv)
@@ -155,6 +171,7 @@ def main(argv: list[str] | None = None) -> None:
         spark_repository(spark, args.param_backend, args.catalog, args.params_catalog),
         args.catalog,
         mode=args.mode,
+        from_date=date.fromisoformat(args.from_date) if args.from_date else None,
         run_id=args.run_id or None,
         triggered_by=args.triggered_by,
     )

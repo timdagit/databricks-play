@@ -37,6 +37,26 @@ def test_recompute_rebuilds_everything_from_the_start():
     ]
 
 
+def test_recompute_can_start_from_a_date():
+    clock = D + timedelta(days=4)
+    assert days_to_build("recompute_gold", clock, clock, D + timedelta(days=3)) == [
+        D + timedelta(days=3),
+        D + timedelta(days=4),
+    ]
+
+
+def test_recompute_from_a_date_before_the_start_means_everything():
+    assert days_to_build("recompute_gold", D + timedelta(days=1), None, D - timedelta(days=30)) == [
+        D,
+        D + timedelta(days=1),
+    ]
+
+
+def test_from_date_is_ignored_by_incremental():
+    clock = D + timedelta(days=3)
+    assert days_to_build("incremental", clock, D + timedelta(days=2), D) == [clock]
+
+
 def test_unknown_mode_is_rejected():
     with pytest.raises(ValueError, match="mode must be one of"):
         days_to_build("full", D, None)

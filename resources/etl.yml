@@ -16,6 +16,9 @@ resources:
       parameters:
         - name: mode
           default: incremental
+        # recompute_gold only: rebuild just the days from this date (YYYY-MM-DD, blank = all).
+        - name: from_date
+          default: ""
         - name: triggered_by
           default: manual
       environments:
@@ -71,6 +74,8 @@ resources:
               - ${var.params_catalog}
               - --mode
               - "{{job.parameters.mode}}"
+              - --from-date
+              - "{{job.parameters.from_date}}"
               - --run-id
               - "{{job.run_id}}"
               - --triggered-by
