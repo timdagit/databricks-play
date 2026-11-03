@@ -113,10 +113,10 @@ def test_supplier_concentration_flags_a_dominant_supplier(spark):
 def test_supplier_concentration_uses_the_supplier_in_force_that_day(spark):
     t = txns(spark, [(0, 1, 10, 100), (1, 1, 10, 100)])
     f = franchise_rows(spark, [(1, 100, 0, 1), (1, 200, 1, None)])
-    day0 = by(gold.supplier_concentration(t, f, D1, Decimal("0.6")), "supplierID")
-    day1 = by(
-        gold.supplier_concentration(t, f, D1 + timedelta(days=1), Decimal("0.6")), "supplierID"
-    )
+    s = supplier_rows(spark, NO_SUPPLIERS)
+    day0 = by(gold.supplier_concentration(t, f, s, D1, Decimal("0.6")), "supplierID")
+    next_day = D1 + timedelta(days=1)
+    day1 = by(gold.supplier_concentration(t, f, s, next_day, Decimal("0.6")), "supplierID")
     assert set(day0) == {100}
     assert set(day1) == {200}
 
