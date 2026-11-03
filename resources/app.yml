@@ -27,15 +27,13 @@ resources:
           - name: LAKEBASE_ENDPOINT
             value: projects/${resources.postgres_projects.params_project.project_id}/branches/production/endpoints/primary
           # Stop the app after this many idle minutes. It stops itself through the Apps API,
-          # which needs its name and CAN_MANAGE on itself (see `permissions` below).
+          # which needs its name and CAN_MANAGE on itself (granted once by
+          # scripts/grant_app_self_manage.sh, since a resource cannot refer to its own outputs).
+          # The name is repeated here because a resource cannot refer to its own `name` either.
           - name: APP_NAME
-            value: ${resources.apps.param_admin.name}
+            value: bakehouse-param-admin-${bundle.target}
           - name: IDLE_STOP_MINUTES
             value: "${var.idle_stop_minutes}"
-      permissions:
-        # The app's own service principal may manage (stop) the app, for the idle stop.
-        - service_principal_name: ${resources.apps.param_admin.service_principal_client_id}
-          level: CAN_MANAGE
       resources:
         - name: lakebase
           postgres:

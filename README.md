@@ -54,7 +54,7 @@ databricks bundle run param_admin -t dev -p personal    # start it (a minute or 
 databricks apps stop bakehouse-param-admin-dev -p personal   # stop it when finished
 ```
 
-The app stops itself after `idle_stop_minutes` of inactivity (page loads and clicks count, the status polling does not). Open it from the Apps page in the workspace. It signs you in with workspace SSO and records your email as `updated_by`. A save with the effective-from field blank applies to every virtual day. Press Rerun ETL to rebuild gold from the earliest date you saved, or Run next day to release and process one more virtual day. You can also run `bakehouse_etl` with `mode=recompute_gold` (and optionally `from_date=YYYY-MM-DD`). The ETL reads the saved values from Lakebase through its Unity Catalog registration.
+The app stops itself after `idle_stop_minutes` of inactivity (page loads and clicks count, the status polling does not). After the first deploy, run `bash scripts/grant_app_self_manage.sh` once so it is allowed to. Open it from the Apps page in the workspace. It signs you in with workspace SSO and records your email as `updated_by`. A save with the effective-from field blank applies to every virtual day. Press Rerun ETL to rebuild gold from the earliest date you saved, or Run next day to release and process one more virtual day. You can also run `bakehouse_etl` with `mode=recompute_gold` (and optionally `from_date=YYYY-MM-DD`). The ETL reads the saved values from Lakebase through its Unity Catalog registration.
 
 The app folder only gets its own files, so every deploy copies `bakehouse_core` into `apps/param_admin/` first (`scripts/stage_app.py`, run by the artifact build). That copy is gitignored.
 
