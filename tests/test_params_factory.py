@@ -1,7 +1,11 @@
+from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
+
 import pytest
 import sqlalchemy as sa
 
 from bakehouse_core.config.identity import (
+    LakebaseTokenProvider,
     StaticTokenProvider,
     fixed_user,
     user_from_headers,
@@ -157,3 +161,59 @@ def test_lakebase_for_jobs_needs_its_catalog_and_other_names_are_rejected():
         factory.spark_repository(object(), "lakebase", "c")
     with pytest.raises(ValueError, match="'delta' or 'lakebase'"):
         factory.spark_repository(object(), "sqlite", "c")
+
+
+START = datetime(2026, 11, 3, 12, 0, tzinfo=UTC)
+ENDPOINT = "projects/p/branches/b/endpoints/e"
+
+
+class FakeCredentialApi:
+    """Stands in for the SDK client: `client.postgres.generate_database_credential`."""
+
+    def __init__(self, with_expiry=True):
+        self.calls = []
+        self._with_expiry = with_expiry
+        self.postgres = self
+
+    def generate_database_credential(self, endpoint):
+        self.calls.append(endpoint)
+        expires = START + timedelta(hours=1) if self._with_expiry else None
+        return SimpleNamespace(token=f"token-{len(self.calls)}", expire_time=expires)
+
+
+def make_provider(client):
+    clock = {"now": START}
+    return LakebaseTokenProvider(client, ENDPOINT, lambda: clock["now"]), clock
+
+
+def test_lakebase_token_is_reused_until_close_to_expiry():
+    client = FakeCredentialApi()
+    provider, clock = make_provider(client)
+    assert provider.get_token() == "token-1"
+    clock["now"] = START + timedelta(minutes=57)  # still more than 2 minutes left
+    assert provider.get_token() == "token-1"
+    assert client.calls == [ENDPOINT]
+    clock["now"] = START + timedelta(minutes=59)  # inside the refresh margin
+    assert provider.get_token() == "token-2"
+
+
+def test_lakebase_token_without_expiry_is_refreshed_after_the_fallback_lifetime():
+    provider, clock = make_provider(FakeCredentialApi(with_expiry=False))
+    provider.get_token()
+    clock["now"] = START + timedelta(minutes=5)
+    assert provider.get_token() == "token-1"
+    clock["now"] = START + timedelta(minutes=9, seconds=30)
+    assert provider.get_token() == "token-2"
+
+
+def test_lakebase_response_without_a_token_is_an_error():
+    client = SimpleNamespace(
+        postgres=SimpleNamespace(
+            generate_database_credential=lambda endpoint: SimpleNamespace(
+                token=None, expire_time=None
+            )
+        )
+    )
+    provider, _ = make_provider(client)
+    with pytest.raises(RuntimeError, match="no token"):
+        provider.get_token()

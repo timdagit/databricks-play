@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Callable, Mapping
+from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
 # Header Databricks Apps sets to the signed-in user. Confirm when the app is deployed.
@@ -50,3 +51,43 @@ def user_from_headers(headers: Mapping[str, str], fallback: str = "unknown") -> 
     """The signed-in user from request headers, or `fallback` when absent."""
     lowered = {k.lower(): v for k, v in headers.items()}
     return lowered.get(FORWARDED_EMAIL_HEADER.lower()) or fallback
+
+
+class LakebaseTokenProvider:
+    """A Lakebase login token from the Databricks SDK, reused until shortly before it expires.
+
+    `client` is a `databricks.sdk.WorkspaceClient`, or anything with the same
+    `postgres.generate_database_credential(endpoint=...)` call. `endpoint` is the compute's
+    resource name: `projects/<project>/branches/<branch>/endpoints/<endpoint>`. Tokens last up
+    to an hour, so a cached one saves an API call on every new connection.
+    """
+
+    REFRESH_BEFORE_SECONDS = 120
+    FALLBACK_LIFETIME_SECONDS = 600  # if the response carries no expiry
+
+    def __init__(
+        self,
+        client: object,
+        endpoint: str,
+        clock: Callable[[], datetime] | None = None,
+    ):
+        self._client = client
+        self._endpoint = endpoint
+        self._clock = clock or (lambda: datetime.now(UTC))
+        self._token: str | None = None
+        self._refresh_at: datetime | None = None
+
+    def get_token(self) -> str:
+        now = self._clock()
+        if self._token is None or self._refresh_at is None or now >= self._refresh_at:
+            credential = self._client.postgres.generate_database_credential(endpoint=self._endpoint)
+            if not credential.token:
+                raise RuntimeError("Lakebase returned no token")
+            expires = credential.expire_time
+            if expires is None:
+                expires = now + timedelta(seconds=self.FALLBACK_LIFETIME_SECONDS)
+            elif expires.tzinfo is None:
+                expires = expires.replace(tzinfo=UTC)
+            self._token = credential.token
+            self._refresh_at = expires - timedelta(seconds=self.REFRESH_BEFORE_SECONDS)
+        return self._token

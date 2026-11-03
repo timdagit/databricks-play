@@ -20,6 +20,7 @@ bakehouse-gold-build = "bakehouse_core.jobs.gold_build:main"
 # stays small. `uv sync` installs it by default (see `default-groups` below).
 app = [
     "dash>=4.5,<5",  # DataTable is deprecated and goes in a later major version
+    "databricks-sdk>=0.160.0",
     "gunicorn>=26.2.0",
     "psycopg[binary]>=3.3.7",
 ]
