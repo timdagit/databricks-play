@@ -134,3 +134,10 @@ Departures from `SPEC.md` and `CLAUDE_CODE_GUIDE.md`, and choices made along the
 - **Idle stop.** A watchdog thread checks every 15 seconds. When no user action, page load or reload has happened for `IDLE_STOP_MINUTES` (the `idle_stop_minutes` variable, default 1), the app calls `apps.stop` on itself. Status polling does not count. It never acts in the first 180 seconds (`IDLE_STARTUP_GRACE_SECONDS`), so a 1-minute limit cannot stop the app before its starter has opened the page. If the stop is refused, it logs the error and retries after 5 minutes.
 - **Untested:** whether the app's service principal may stop its own app. If it cannot, the fallback is the scheduled GitHub workflow in spec 6.4, or a one-off `CAN_MANAGE` grant to the app's service principal.
 - **Not done:** the spec's `ops.app_metrics` event log for idle stops (the stop is logged to the app log instead). It belongs to the comparison work in workstream 13.
+
+## 2026-11-03: workstream 12 (promotion) is out of scope
+
+- **Decision (Tim).** There is no time in the initial build to try other environments, so workstream 12 is dropped. The bundle stays `dev` only.
+- **Dropped:** `test` and `prod` targets, per-environment catalogs, service principals as run identities, the deploy workflows (merge to `main` deploys `test`, a tag deploys `prod` after approval), GitHub Environments and secrets, and the secret-rotation notes. CI keeps running tests, ruff and gitleaks on pushes, which needs no Databricks access.
+- **Kept, as a wrap-up at the end of the build:** the dev checks (tags show on resources and in billing, Lakebase suspends, the app stops at its idle setting, nothing is left running) and a short `docs/ops.md` for start, stop, reset and cost checks.
+- **Knock-on:** the backend comparison (workstream 13) runs its exerciser in `dev`, not `test`. Jobs keep running as the deploying user, so the Postgres and Unity Catalog grants a service principal would need are not written. The spec's guardrail about asking before touching `test` or `prod` has nothing to apply to.

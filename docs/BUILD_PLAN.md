@@ -236,6 +236,8 @@ The workstreams below are in a sensible dependency order. Reorder, merge or spli
 
 ## 12. Promotion and verification
 
+> **Out of scope for the initial build (decided 2026-11-03).** There is no time to try other environments, so the bundle stays `dev` only. The dev checks in the list below, and a short `docs/ops.md`, are folded into a wrap-up at the end instead. See `docs/decisions.md`.
+
 **Outcome**
 
 - Merging to `main` deploys `test` and runs a smoke test. A `v*` tag deploys `prod` after approval.
@@ -252,4 +254,4 @@ The workstreams below are in a sensible dependency order. Reorder, merge or spli
 
 ## 13. Comparison
 
-**Outcome:** `docs/backend-comparison.md` compares Lakebase and Delta on latency, cost, local development experience, governance and code complexity. It uses a scripted exerciser in `test` over 14 virtual days, and ends with a recommendation that notes when the spec §9 options would change it.
+**Outcome:** `docs/backend-comparison.md` compares Lakebase and Delta on latency, cost, local development experience, governance and code complexity. It uses a scripted exerciser in `dev` over 14 virtual days (it was planned for `test`, which is out of scope), and ends with a recommendation that notes when the spec §9 options would change it.
