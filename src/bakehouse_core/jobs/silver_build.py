@@ -12,6 +12,7 @@ import json
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 from pyspark.sql import functions as F
@@ -23,6 +24,25 @@ from bakehouse_core.transforms import scd2, silver
 
 JOB = "silver_build"
 LOAD_PARAMS_JOB = "load_params"
+
+
+def write_batch_stats(stats_dir: str, entity: str, batch_id: int, stats: dict[str, Any]) -> None:
+    """Save one batch's counts as a file.
+
+    On serverless, `foreachBatch` runs in a separate Python process, so the handler cannot hand
+    results back through a variable. Files in the checkpoints volume can be read afterwards.
+    """
+    folder = Path(stats_dir)
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / f"{entity}-{batch_id:06d}.json").write_text(json.dumps(stats, default=str))
+
+
+def read_batch_stats(stats_dir: str, entity: str) -> list[dict[str, Any]]:
+    """The saved counts for an entity, oldest batch first."""
+    folder = Path(stats_dir)
+    if not folder.exists():
+        return []
+    return [json.loads(f.read_text()) for f in sorted(folder.glob(f"{entity}-*.json"))]
 
 
 def process_batch(
@@ -110,13 +130,13 @@ def run_silver_build(
         tables.ensure_tables()
         raw_dir = f"/Volumes/{catalog}/bronze/raw"
         checkpoints = f"/Volumes/{catalog}/ops/checkpoints"
+        stats_dir = f"{checkpoints}/_stats/{run_id}"
         for spec in SPECS.values():
-            details[spec.entity] = {"batches": []}
 
-            def handle(batch_df, _batch_id, spec=spec):
+            def handle(batch_df, batch_id, spec=spec):
                 if not batch_df.isEmpty():
                     stats = process_batch(tables, spec, batch_df, max_null_pct)
-                    details[spec.entity]["batches"].append(stats)
+                    write_batch_stats(stats_dir, spec.entity, batch_id, stats)
 
             query = (
                 _read_stream(spark, raw_dir, checkpoints, spec.entity)
@@ -126,6 +146,7 @@ def run_silver_build(
                 .start()
             )
             query.awaitTermination()
+            details[spec.entity] = {"batches": read_batch_stats(stats_dir, spec.entity)}
         status = "succeeded"
     except Exception as exc:
         details["error"] = f"{type(exc).__name__}: {exc}"

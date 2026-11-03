@@ -5,7 +5,11 @@ import pytest
 from pyspark.sql import functions as F
 
 from bakehouse_core.io.silver_tables import SPECS
-from bakehouse_core.jobs.silver_build import process_batch
+from bakehouse_core.jobs.silver_build import (
+    process_batch,
+    read_batch_stats,
+    write_batch_stats,
+)
 
 pytestmark = pytest.mark.spark
 
@@ -125,3 +129,14 @@ def test_scd2_batch_with_several_days_is_applied_oldest_first(spark):
     assert not leeds[0]["_is_current"]
     assert len(york) == 1 and york[0]["_is_current"]  # day 3 repeats York: no new version
     assert any(r["customerID"] == 2 and r["_is_current"] for r in rows)
+
+
+def test_batch_stats_round_trip_in_batch_order(tmp_path):
+    folder = str(tmp_path / "stats" / "run1")
+    write_batch_stats(folder, "transactions", 1, {"applied": 5})
+    write_batch_stats(folder, "transactions", 0, {"applied": 3})
+    write_batch_stats(folder, "reviews", 0, {"applied": 1})
+    assert read_batch_stats(folder, "transactions") == [{"applied": 3}, {"applied": 5}]
+    assert read_batch_stats(folder, "reviews") == [{"applied": 1}]
+    assert read_batch_stats(folder, "customers") == []
+    assert read_batch_stats(str(tmp_path / "missing"), "reviews") == []
