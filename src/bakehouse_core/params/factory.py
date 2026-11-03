@@ -19,8 +19,14 @@ import sqlalchemy as sa
 from bakehouse_core.config.identity import TokenProvider
 from bakehouse_core.params.delta import CatalogReadRepository, DeltaRepository
 from bakehouse_core.params.repository import ParamRepository, SqlRepository
+from bakehouse_core.params.schema import PARAMS_SCHEMA
 
 BACKENDS = ("sqlite", "postgres", "lakebase", "delta")
+
+
+def _search_path() -> dict[str, str]:
+    """Make unqualified table names mean the parameters schema on every new connection."""
+    return {"options": f"-c search_path={PARAMS_SCHEMA}"}
 
 
 def attach_token_auth(engine: sa.Engine, provider: TokenProvider) -> None:
@@ -55,7 +61,7 @@ def get_repository(
 
     if backend == "postgres":
         url = _require(env, "DATABASE_URL", backend)
-        return SqlRepository(sa.create_engine(url, pool_pre_ping=True))
+        return SqlRepository(sa.create_engine(url, pool_pre_ping=True, connect_args=_search_path()))
 
     if backend == "lakebase":
         if token_provider is None:
@@ -69,7 +75,9 @@ def get_repository(
             query={"sslmode": "require"},
         )
         # Lakebase tokens expire, so recycle connections well inside the token lifetime.
-        engine = sa.create_engine(url, pool_pre_ping=True, pool_recycle=1800)
+        engine = sa.create_engine(
+            url, pool_pre_ping=True, pool_recycle=1800, connect_args=_search_path()
+        )
         attach_token_auth(engine, token_provider)
         return SqlRepository(engine)
 

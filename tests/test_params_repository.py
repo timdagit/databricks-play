@@ -108,3 +108,10 @@ def test_ensure_schema_creates_and_seeds_a_fresh_database():
     assert fresh.load_current() == model.defaults()
     fresh.ensure_schema()  # safe to repeat
     assert len(fresh.history("underperform_pct")) == 1
+
+
+def test_schema_is_only_created_on_databases_that_have_schemas():
+    from bakehouse_core.params.schema import create_schema_sql
+
+    assert create_schema_sql("postgresql") == "CREATE SCHEMA IF NOT EXISTS params"
+    assert create_schema_sql("sqlite") is None

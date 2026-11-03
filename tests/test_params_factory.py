@@ -45,6 +45,7 @@ def test_backend_name_is_case_insensitive():
 def test_postgres_uses_database_url(captured):
     factory.get_repository({"PARAM_BACKEND": "postgres", "DATABASE_URL": "postgresql://h/db"})
     assert captured[0][0] == "postgresql://h/db"
+    assert captured[0][1]["connect_args"] == {"options": "-c search_path=params"}
 
 
 def test_postgres_requires_database_url():
@@ -58,6 +59,7 @@ def test_lakebase_builds_url_from_pg_variables(captured):
     url = captured[0][0]
     assert (url.host, url.database, url.username, url.port) == ("db.example", "d", "u", 5432)
     assert url.query["sslmode"] == "require"
+    assert captured[0][1]["connect_args"] == {"options": "-c search_path=params"}
 
 
 def test_lakebase_needs_a_token_provider():

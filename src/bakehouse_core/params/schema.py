@@ -15,6 +15,10 @@ from bakehouse_core.params import model
 # Version 1 applies from before any virtual date, so as-of reads always find a value.
 SEED_EFFECTIVE_FROM = date(1900, 1, 1)
 
+# On Postgres (the local container and Lakebase) the tables live in this schema, which the app
+# creates and owns, so it needs no rights on `public`. SQLite has no schemas and ignores it.
+PARAMS_SCHEMA = "params"
+
 metadata = sa.MetaData()
 
 param_definitions = sa.Table(
@@ -42,11 +46,22 @@ param_versions = sa.Table(
 )
 
 
+def create_schema_sql(dialect_name: str) -> str | None:
+    """The statement that creates the parameters schema, or None for databases without schemas."""
+    if dialect_name == "postgresql":
+        return f"CREATE SCHEMA IF NOT EXISTS {PARAMS_SCHEMA}"
+    return None
+
+
 def init_schema(engine: sa.Engine) -> None:
     """Create the tables if missing and seed any missing definitions and version 1 defaults.
 
     Safe to run repeatedly: existing rows are left alone.
     """
+    statement = create_schema_sql(engine.dialect.name)
+    if statement:
+        with engine.begin() as conn:
+            conn.execute(sa.text(statement))
     metadata.create_all(engine)
     now = datetime.now(UTC)
     with engine.begin() as conn:

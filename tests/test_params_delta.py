@@ -30,7 +30,7 @@ class FakeSpark:
 
     def sql(self, query, args=None):
         # `cat.ops.table` becomes `ops_table`, and `:name` markers are bound by sqlite.
-        query = re.sub(r"\b\w+\.(?:ops|public)\.(\w+)", r"ops_\1", query)
+        query = re.sub(r"\b\w+\.(?:ops|public|params)\.(\w+)", r"ops_\1", query)
         # sqlite would turn a cast to DATE or TIMESTAMP into a number, so keep the text.
         query = re.sub(r"CAST\((:\w+) AS (?:DATE|TIMESTAMP)\)", r"\1", query)
         query = query.replace(" STRING", " TEXT")  # sqlite gives STRING numeric affinity

@@ -18,7 +18,7 @@ from typing import Any
 from bakehouse_core.io.ops_tables import ident
 from bakehouse_core.params import model
 from bakehouse_core.params.repository import ParamRepository, ParamValidationError, ParamVersion
-from bakehouse_core.params.schema import SEED_EFFECTIVE_FROM
+from bakehouse_core.params.schema import PARAMS_SCHEMA, SEED_EFFECTIVE_FROM
 
 
 def _as_date(value: Any) -> date:
@@ -187,7 +187,7 @@ class CatalogReadRepository(DeltaRepository):
     Lakebase, and it creates the tables, so setting up and saving are refused here.
     """
 
-    def __init__(self, spark: Any, catalog: str, schema: str = "public"):
+    def __init__(self, spark: Any, catalog: str, schema: str = PARAMS_SCHEMA):
         super().__init__(spark, catalog, schema)
 
     def ensure_schema(self) -> None:
