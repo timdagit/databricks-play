@@ -37,7 +37,7 @@ requires-dist = [{ name = "sqlalchemy", specifier = ">=2.1.6" }]
 
 [package.metadata.requires-dev]
 app = [
-    { name = "dash", specifier = ">=4.5.0" },
+    { name = "dash", specifier = ">=4.5,<5" },
     { name = "gunicorn", specifier = ">=26.2.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.7" },
 ]
