@@ -10,7 +10,7 @@ from datetime import UTC, date, datetime
 import sqlalchemy as sa
 
 from bakehouse_core.params import model
-from bakehouse_core.params.schema import param_versions
+from bakehouse_core.params.schema import init_schema, param_versions
 
 
 class ParamValidationError(ValueError):
@@ -34,6 +34,10 @@ class ParamVersion:
 
 class ParamRepository(ABC):
     """What the ETL, the app and the tests need from a parameter store."""
+
+    @abstractmethod
+    def ensure_schema(self) -> None:
+        """Create the tables and seed the defaults if missing. Safe to call every start."""
 
     @abstractmethod
     def load_current(self) -> dict[str, model.Value]:
@@ -71,6 +75,9 @@ class SqlRepository(ParamRepository):
 
     def __init__(self, engine: sa.Engine):
         self._engine = engine
+
+    def ensure_schema(self) -> None:
+        init_schema(self._engine)
 
     def _load(self, as_of: date | None) -> dict[str, tuple[int, str]]:
         query = sa.select(

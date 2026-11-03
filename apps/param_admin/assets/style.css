@@ -1,0 +1,8 @@
+.page { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, sans-serif; }
+.muted { color: #666; }
+.controls { display: flex; gap: 0.5rem; margin: 1rem 0; flex-wrap: wrap; }
+.controls input { padding: 6px; min-width: 18rem; }
+.controls button { padding: 6px 14px; }
+.ok { color: #1a7f37; }
+.error { color: #b42318; }
+.info { color: #555; }

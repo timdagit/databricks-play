@@ -95,3 +95,9 @@ def test_versions_as_of_match_the_values_picked(repo):
     repo.save({"underperform_pct": "0.30"}, user="t", effective_from=date(2024, 5, 10))
     assert repo.versions_as_of(date(2024, 5, 9))["underperform_pct"] == 1
     assert repo.versions_as_of(date(2024, 5, 10))["underperform_pct"] == 2
+
+
+def test_ensure_schema_is_ensure_tables():
+    repo = DeltaRepository(FakeSpark(), "cat")
+    repo.ensure_schema()
+    assert repo.load_current() == model.defaults()

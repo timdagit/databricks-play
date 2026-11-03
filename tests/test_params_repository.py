@@ -100,3 +100,11 @@ def test_save_takes_the_next_free_version_per_key(engine, repo):
     # Each key's version is worked out per key inside the save transaction.
     versions = repo.save({"min_txn_for_ranking": 75, "review_alert_min_count": 5}, user="tim")
     assert versions == {"min_txn_for_ranking": 2, "review_alert_min_count": 3}
+
+
+def test_ensure_schema_creates_and_seeds_a_fresh_database():
+    fresh = SqlRepository(sa.create_engine("sqlite://"))
+    fresh.ensure_schema()
+    assert fresh.load_current() == model.defaults()
+    fresh.ensure_schema()  # safe to repeat
+    assert len(fresh.history("underperform_pct")) == 1

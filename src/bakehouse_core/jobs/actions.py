@@ -51,3 +51,9 @@ def start_action(trigger: JobTrigger, action_key: str, user: str) -> StartResult
         )
     run_id = trigger.trigger(action.job_name, {**action.params, "triggered_by": user})
     return StartResult(True, f"Started {action.label}.", run_id)
+
+
+def describe_run(status: RunStatus, label: str | None = None) -> str:
+    """One line for the status panel, e.g. `Rerun ETL: succeeded (8s)`."""
+    name = label or status.job_name
+    return f"{name}: {status.state.lower()} ({status.duration_seconds:.0f}s)"

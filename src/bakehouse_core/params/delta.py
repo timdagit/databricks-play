@@ -43,6 +43,9 @@ class DeltaRepository(ParamRepository):
     def _keys(self, table: str) -> set[str]:
         return {r[0] for r in self._sql(f"SELECT param_key FROM {self._t(table)}").collect()}
 
+    def ensure_schema(self) -> None:
+        self.ensure_tables()
+
     def ensure_tables(self) -> None:
         """Create the tables if missing and seed any missing definitions and version 1 defaults."""
         self._sql(
