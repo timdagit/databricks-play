@@ -32,3 +32,9 @@ Departures from `SPEC.md` and `CLAUDE_CODE_GUIDE.md`, and choices made along the
 - **Presets.** `name_prefix`, `tags`, `trigger_pause_status` and `jobs_max_concurrent_runs` exist, so schedules can be paused and tags set at bundle level.
 - **Workspace.** `workspace.artifact_path` exists, so the wheel can be uploaded to a volume path (to verify when deploying).
 - **Warehouse.** `sql_warehouses` has `auto_stop_mins` and `tags`, so the 1-minute idle default is expressible.
+
+## 2026-11-03: dev target without development mode
+
+- **Schema names.** `mode: development` prefixes schemas with `dev_<user>_`, giving `bakehouse_dev.dev_<user>_silver` instead of the spec's `bakehouse_dev.silver`. An empty `name_prefix` is ignored, so the `dev` target drops `mode: development`. It sets `presets.trigger_pause_status: PAUSED` by hand to keep schedules paused.
+- **Check when adding resources.** Apps and jobs are no longer auto-prefixed either, so give them explicit names. Other effects of development mode (such as concurrent run limits) are now off unless set.
+- **Volumes** are not prefixed in either case.

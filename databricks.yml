@@ -31,5 +31,8 @@ presets:
 
 targets:
   dev:
-    mode: development
+    # No `mode: development`: it forces a dev_<user>_ prefix on schema names, which
+    # the dev-only catalog doesn't need. The presets below keep what matters for cost.
     default: true
+    presets:
+      trigger_pause_status: PAUSED
