@@ -1,0 +1,40 @@
+# The parameter admin app on Databricks Apps (spec 4.4). It runs as its own service principal.
+# Deploying creates it stopped, so nothing bills until you start it:
+#   databricks bundle run param_admin -t dev -p personal
+# and stop it again when finished:
+#   databricks apps stop bakehouse-param-admin-dev -p personal
+resources:
+  apps:
+    param_admin:
+      name: bakehouse-param-admin-${bundle.target}
+      description: Edit the Bakehouse business parameters and start ETL runs.
+      source_code_path: ../apps/param_admin
+      compute_size: MEDIUM
+      lifecycle:
+        started: false
+      config:
+        command: ["gunicorn", "app:server"]
+        env:
+          - name: PARAM_BACKEND
+            value: lakebase
+          # Real runs arrive in workstream 9. Until then the buttons are simulated.
+          - name: JOB_TRIGGER
+            value: fake
+          - name: LAKEBASE_ENDPOINT
+            value: projects/${resources.postgres_projects.params_project.project_id}/branches/production/endpoints/primary
+          - name: IDLE_ENABLED
+            value: "false"
+      resources:
+        - name: lakebase
+          postgres:
+            branch: projects/${resources.postgres_projects.params_project.project_id}/branches/production
+            database: projects/${resources.postgres_projects.params_project.project_id}/branches/production/databases/bakehouse
+            permission: CAN_CONNECT_AND_CREATE
+        - name: etl-job
+          job:
+            id: ${resources.jobs.bakehouse_etl.id}
+            permission: CAN_MANAGE_RUN
+        - name: daily-run-job
+          job:
+            id: ${resources.jobs.daily_run.id}
+            permission: CAN_MANAGE_RUN

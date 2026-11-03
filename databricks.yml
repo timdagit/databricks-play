@@ -28,6 +28,9 @@ variables:
   job_timeout_seconds:
     description: Run timeout for jobs. Only catches runaways, since a job has no idle state.
     default: 900
+  params_catalog:
+    description: Unity Catalog name that Lakebase is registered as, where the ETL reads parameters.
+    default: bakehouse_params_${bundle.target}
   param_backend:
     description: Where the ETL reads parameters from, `delta` (ops tables) or `lakebase` (its catalog).
     default: delta

@@ -24,11 +24,18 @@ resources:
       # Make this a variable if test or prod targets are added.
       purge_on_delete: true
 
+  # Declared here, not created by the catalog, so its resource name is fixed
+  # (.../databases/bakehouse). The app resource needs that name, and a database that the
+  # catalog creates gets a generated one.
+  postgres_databases:
+    params_database:
+      parent: projects/${resources.postgres_projects.params_project.project_id}/branches/production
+      database_id: bakehouse
+      postgres_database: bakehouse
+
   postgres_catalogs:
     params_catalog:
       # Registers the database in Unity Catalog so the ETL can read parameters with Spark SQL.
-      catalog_id: bakehouse_params_${bundle.target}
-      # Assumes the project's default branch is called `production`; confirm on the first plan.
+      catalog_id: ${var.params_catalog}
       branch: projects/${resources.postgres_projects.params_project.project_id}/branches/production
-      postgres_database: bakehouse
-      create_database_if_missing: true
+      postgres_database: ${resources.postgres_databases.params_database.postgres_database}
