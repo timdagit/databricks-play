@@ -277,6 +277,17 @@ def test_a_refused_stop_is_logged_and_retried_later_not_raised():
     assert not watchdog.stop_requested
 
 
+def test_a_refused_stop_logs_the_error_type_and_text_on_one_line(caplog):
+    def refuse():
+        raise PermissionError("not allowed to manage this app")
+
+    watchdog, _tracker, clock = make_watchdog(refuse)
+    clock.now = 100
+    with caplog.at_level("ERROR"):
+        watchdog.check()
+    assert "idle stop failed (PermissionError: not allowed to manage this app)" in caplog.text
+
+
 def test_the_background_thread_runs_checks_and_ends_after_a_stop():
     import threading
 

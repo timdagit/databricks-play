@@ -68,9 +68,15 @@ class IdleWatchdog:
             return False
         try:
             self._stop()
-        except Exception:  # noqa: BLE001 - any failure to stop must be logged, not raised
+        except Exception as exc:  # noqa: BLE001 - any failure to stop must be logged, not raised
             self._last_failure = now
-            log.exception("idle stop failed; will try again in %s seconds", self._retry)
+            log.error(
+                "idle stop failed (%s: %s); will try again in %s seconds",
+                type(exc).__name__,
+                exc,
+                self._retry,
+                exc_info=True,
+            )
             return False
         self.stop_requested = True
         log.warning("idle for %.0f seconds: stop requested", self._tracker.idle_seconds())

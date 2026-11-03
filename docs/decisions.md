@@ -141,3 +141,8 @@ Departures from `SPEC.md` and `CLAUDE_CODE_GUIDE.md`, and choices made along the
 - **Dropped:** `test` and `prod` targets, per-environment catalogs, service principals as run identities, the deploy workflows (merge to `main` deploys `test`, a tag deploys `prod` after approval), GitHub Environments and secrets, and the secret-rotation notes. CI keeps running tests, ruff and gitleaks on pushes, which needs no Databricks access.
 - **Kept, as a wrap-up at the end of the build:** the dev checks (tags show on resources and in billing, Lakebase suspends, the app stops at its idle setting, nothing is left running) and a short `docs/ops.md` for start, stop, reset and cost checks.
 - **Knock-on:** the backend comparison (workstream 13) runs its exerciser in `dev`, not `test`. Jobs keep running as the deploying user, so the Postgres and Unity Catalog grants a service principal would need are not written. The spec's guardrail about asking before touching `test` or `prod` has nothing to apply to.
+
+## 2026-11-03: first idle stop attempt on Databricks
+
+- **What happened.** The watchdog fired on schedule (3 minutes of start-up grace, then it tried at the first check), the stop call failed, and it backed off 5 minutes and failed again, as designed. The error text was not captured: app logs cannot be read once the app is stopped, and the one-line log message did not carry it.
+- **Changes.** The failure is now logged on one line with its type and text. The bundle passes the app's name explicitly (`APP_NAME`) instead of relying on the platform's `DATABRICKS_APP_NAME`, and grants the app's own service principal `CAN_MANAGE` on the app. These cover the two likely causes (a missing name, or no permission to stop itself). To be confirmed on the next run.

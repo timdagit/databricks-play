@@ -10,7 +10,8 @@ Run locally with `uv run python apps/param_admin/app.py`, or in the container wi
   `ETL_JOB_ID` and `DAILY_RUN_JOB_ID`
 - `APP_USER`: the name recorded in `updated_by` when no user header is present
 - `IDLE_STOP_MINUTES`: stop the app after this many idle minutes (0, the default, is off). It
-  stops itself through the Apps API using `DATABRICKS_APP_NAME`, which the platform sets.
+  stops itself through the Apps API, using `APP_NAME` (set by the bundle) or else the
+  platform's `DATABRICKS_APP_NAME`.
   `IDLE_STARTUP_GRACE_SECONDS` (default 180) delays the first possible stop.
 """
 
@@ -61,7 +62,9 @@ def _stop_app():
     """Stop this app through the Apps API (the app's service principal needs CAN_MANAGE)."""
     from databricks.sdk import WorkspaceClient
 
-    return WorkspaceClient().apps.stop(os.environ["DATABRICKS_APP_NAME"])
+    # APP_NAME is set by the bundle. DATABRICKS_APP_NAME is the platform's own variable.
+    name = os.environ.get("APP_NAME") or os.environ["DATABRICKS_APP_NAME"]
+    return WorkspaceClient().apps.stop(name)
 
 
 idle_minutes = float(os.environ.get("IDLE_STOP_MINUTES", "0") or 0)
