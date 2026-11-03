@@ -32,6 +32,9 @@ resources:
       parent: projects/${resources.postgres_projects.params_project.project_id}/branches/production
       database_id: bakehouse
       postgres_database: bakehouse
+      # The owner must be an existing role. The platform creates one for whoever creates the
+      # project, named after their short user name, so the deploying user owns the database.
+      role: projects/${resources.postgres_projects.params_project.project_id}/branches/production/roles/${workspace.current_user.short_name}
 
   postgres_catalogs:
     params_catalog:
