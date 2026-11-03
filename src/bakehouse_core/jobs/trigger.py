@@ -20,6 +20,10 @@ class RunStatus:
     url: str | None = None  # a link to the run page, when there is one
 
 
+class UnknownRunError(KeyError):
+    """The run id is not known to the trigger, e.g. after the server restarted."""
+
+
 class JobTrigger(ABC):
     @abstractmethod
     def trigger(self, job_name: str, params: Mapping[str, str] | None = None) -> str:
@@ -27,7 +31,7 @@ class JobTrigger(ABC):
 
     @abstractmethod
     def status(self, run_id: str) -> RunStatus:
-        """The current state of a run started earlier."""
+        """The current state of a run started earlier. Raises `UnknownRunError` if unknown."""
 
     @abstractmethod
     def active_run(self, job_name: str) -> RunStatus | None:
@@ -55,6 +59,8 @@ class FakeJobTrigger(JobTrigger):
         return run_id
 
     def status(self, run_id: str) -> RunStatus:
+        if run_id not in self._started:
+            raise UnknownRunError(run_id)
         job_name, started = self._started[run_id]
         elapsed = self.clock() - started
         state: RunState = "RUNNING" if elapsed < self.run_seconds else self.final_state

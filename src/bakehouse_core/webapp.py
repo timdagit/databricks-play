@@ -18,7 +18,7 @@ from flask import jsonify, request
 from bakehouse_core.config.identity import user_from_headers
 from bakehouse_core.config.idle import IdleTracker
 from bakehouse_core.jobs import actions
-from bakehouse_core.jobs.trigger import JobTrigger
+from bakehouse_core.jobs.trigger import JobTrigger, UnknownRunError
 from bakehouse_core.params import view
 from bakehouse_core.params.repository import ParamRepository
 
@@ -107,11 +107,17 @@ class Handlers:
     def poll(self, tracked: dict | None) -> Poll:
         """Status for the page. Never touches the idle tracker: polling is not activity."""
         parts = []
+        tracked_id = None
         if tracked:
-            status = self.trigger.status(tracked["run_id"])
-            parts.append(actions.describe_run(status, tracked["label"]))
+            try:
+                status = self.trigger.status(tracked["run_id"])
+                tracked_id = tracked["run_id"]
+                parts.append(actions.describe_run(status, tracked["label"]))
+            except UnknownRunError:
+                # The server restarted, or the run is gone: say so instead of failing.
+                parts.append(f"{tracked['label']}: no longer known to the server")
         active = actions.any_active(self.trigger)
-        if active is not None and not (tracked and active.run_id == tracked["run_id"]):
+        if active is not None and active.run_id != tracked_id:
             parts.append(actions.describe_run(active))
         return Poll(active is not None, " | ".join(parts) or "No run in progress.")
 

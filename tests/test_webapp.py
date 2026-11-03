@@ -169,3 +169,11 @@ def test_poll_callback_round_trip(client):
     body = response.get_json()["response"]
     assert body["run-status"]["children"] == "No run in progress."
     assert body["rerun_etl"]["disabled"] is False
+
+
+def test_poll_copes_with_a_run_the_server_no_longer_knows(handlers):
+    # e.g. the container restarted while the browser page stayed open
+    stale = {"run_id": "fake-run-1", "label": "Run next day"}
+    poll = handlers.poll(stale)
+    assert poll.text == "Run next day: no longer known to the server"
+    assert not poll.buttons_disabled
