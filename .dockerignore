@@ -1,0 +1,16 @@
+.git
+.github
+.venv
+.databricks
+.idea
+.claude
+.pytest_cache
+.ruff_cache
+**/__pycache__
+dist
+docs
+tests
+resources
+databricks.yml
+.env*
+!.env*.example

@@ -11,7 +11,7 @@ It exercises Python ETL jobs, Lakeflow Designer, Databricks Apps (a Dash app tha
 
 ## Status
 
-Early. Built and working on Databricks: the `dev` bundle (schemas, volumes), the simulator and the reset job. The ETL (`load_params`, `silver_build`, `gold_build`, chained by `daily_run`) runs on Databricks, with the Delta parameter store. Built and tested locally: the SQLite parameter store and its backend factory. Not built yet: the app, the Lakebase parameter backend, Designer and the notebooks.
+Early. Built and working on Databricks: the `dev` bundle (schemas, volumes), the simulator and the reset job. The ETL (`load_params`, `silver_build`, `gold_build`, chained by `daily_run`) runs on Databricks, with the Delta parameter store. Built and tested locally: the SQLite parameter store and its backend factory. The parameter admin app runs locally (SQLite, or Postgres in Docker) with simulated run buttons. Not built yet: the Lakebase backend and the app on Databricks, the real job trigger, Designer and the notebooks.
 
 ## Local development
 
@@ -26,6 +26,22 @@ uv add <package>         # add a dependency (updates pyproject.toml and uv.lock)
 ```
 
 Tests run without cloud access. Tests that need Spark or Databricks are marked `spark` or `databricks`, so `uv run pytest -m "not spark and not databricks"` skips them.
+
+## The parameter app, locally
+
+The Dash app in `apps/param_admin` edits the 10 business parameters. Locally it uses a simulated job trigger, so the run buttons never touch Databricks.
+
+```bash
+# Quickest: an in-memory SQLite database that resets on every start
+uv run python apps/param_admin/app.py          # http://127.0.0.1:8050
+
+# Against Postgres 16 in Docker (host port 5433, so it avoids a Postgres already on 5432)
+cp .env.local.example .env.local               # gitignored; edit the ports if you like
+docker compose --env-file .env.local up --build
+docker compose down -v                          # back to the seeded defaults
+```
+
+Settings are environment variables: `PARAM_BACKEND`, `DATABASE_URL`, `JOB_TRIGGER`, `APP_USER`, `IDLE_ENABLED`. The app creates its tables and the default parameters when it starts.
 
 ## Variables, deploy and destroy
 

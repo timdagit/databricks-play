@@ -90,3 +90,9 @@ Departures from `SPEC.md` and `CLAUDE_CODE_GUIDE.md`, and choices made along the
 
 - **Finding.** Dash 4.5 marks `dash_table.DataTable` as deprecated: it still works, will leave the built-in components in a future major version, and `dash-ag-grid` is the suggested replacement.
 - **Decision.** Keep `DataTable` for now and cap Dash at `<5` in the `app` dependency group, so an upgrade cannot remove it by accident. The handlers (`bakehouse_core.webapp.Handlers`) work on plain rows, so switching to `dash-ag-grid` later only touches the layout and callback wiring in `create_app`. Revisit if Dash 5 is wanted, or once the app has been proven on Databricks (workstream 8).
+
+## 2026-11-03: local app setup
+
+- **Schema and seed from code, not `db/`.** Spec 5.1 and 7 have Postgres initialised from SQL files in `db/`. The tables and the version 1 defaults are already defined once in code (`params.schema`, `params.model`) and used by the tests, so the app calls `ensure_schema()` on start and no second copy of the DDL exists. A hard reset reseeds from the same code.
+- **Ports.** The compose file publishes Postgres on host port 5433 and the app on 8050, both on localhost only and both set in `.env.local`, so a Postgres already running on 5432 is not disturbed. Compose reads that file through `--env-file`, because it only reads `.env` by default.
+- **One gunicorn worker with threads.** The idle tracker behind `/idle` lives in the process, so every request must reach the same one.

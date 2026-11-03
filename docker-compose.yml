@@ -1,0 +1,42 @@
+# Local development: the parameter app against a Postgres 16 container.
+#
+#   cp .env.local.example .env.local
+#   docker compose --env-file .env.local up --build
+#
+# Reset the database to the seeded defaults:  docker compose down -v
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      # A non-standard host port, so it does not clash with a Postgres already on 5432.
+      - "127.0.0.1:${POSTGRES_HOST_PORT}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      dockerfile: apps/param_admin/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PARAM_BACKEND: postgres
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      JOB_TRIGGER: fake
+      APP_USER: ${APP_USER}
+      IDLE_ENABLED: "false"
+    ports:
+      - "127.0.0.1:${APP_HOST_PORT}:8050"
+
+volumes:
+  pgdata:
