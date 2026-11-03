@@ -1,0 +1,77 @@
+resources:
+  jobs:
+    simulator:
+      name: simulator_${bundle.target}
+      description: Release virtual days of raw data into the raw volume and advance the clock.
+      max_concurrent_runs: 1
+      timeout_seconds: ${var.job_timeout_seconds}
+      parameters:
+        - name: days
+          default: "1"
+        - name: mode
+          default: auto
+        - name: scenarios
+          default: ""
+        - name: triggered_by
+          default: manual
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "5"
+            dependencies:
+              - ../dist/*.whl
+      tasks:
+        - task_key: simulate
+          environment_key: default
+          python_wheel_task:
+            package_name: bakehouse_core
+            entry_point: bakehouse-simulate
+            parameters:
+              - --catalog
+              - ${var.catalog}
+              - --days
+              - "{{job.parameters.days}}"
+              - --mode
+              - "{{job.parameters.mode}}"
+              - --scenarios
+              - "{{job.parameters.scenarios}}"
+              - --triggered-by
+              - "{{job.parameters.triggered_by}}"
+
+    ops_reset:
+      name: ops_reset_${bundle.target}
+      description: >-
+        Return this target to a known starting state. Needs confirm=<target name>.
+        Level data clears the data and the clock. Level hard also reseeds the parameters.
+      max_concurrent_runs: 1
+      timeout_seconds: ${var.job_timeout_seconds}
+      parameters:
+        - name: level
+          default: data
+        - name: confirm
+          default: ""
+        - name: requested_by
+          default: manual
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "5"
+            dependencies:
+              - ../dist/*.whl
+      tasks:
+        - task_key: reset
+          environment_key: default
+          python_wheel_task:
+            package_name: bakehouse_core
+            entry_point: bakehouse-reset
+            parameters:
+              - --catalog
+              - ${var.catalog}
+              - --target
+              - ${bundle.target}
+              - --level
+              - "{{job.parameters.level}}"
+              - --confirm
+              - "{{job.parameters.confirm}}"
+              - --requested-by
+              - "{{job.parameters.requested_by}}"
