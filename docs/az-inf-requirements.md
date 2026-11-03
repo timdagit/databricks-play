@@ -15,6 +15,12 @@ Changes this project needs in the Terraform project at `/Users/timda/HOME/GIT/az
 - No `bakehouse_dev` catalog exists in the workspace (checked 2026-11-03), so there is nothing to drop or import. If one is created by hand before the apply, drop it first.
 - Layer `50` must be applied before `52`.
 
+**Follow-up found on the first job run (2026-11-03): add `Storage Blob Delegator`**
+- The simulator job failed with `Request for user delegation key is not authorized` (SQLSTATE 42501) as soon as it touched the new catalog's storage.
+- Likely cause (not yet confirmed): the connector's `Storage Blob Data Contributor` role is scoped to a single container, but generating a user delegation key is an account-level action. The built-in `Storage Blob Delegator` role covers it.
+- Change in layer `50-databricks-storage`: add a `Storage Blob Delegator` role assignment for the access connector, **scoped to the storage account** (not a container). One assignment covers every container, so it also covers `learning`.
+- Role assignments can take a few minutes to take effect after the apply.
+
 **Not needed**
 - The read-only `samples.bakehouse` sample data needs nothing.
 - A separate resource-group budget. The existing £20 budget already covers the Databricks resource groups.
