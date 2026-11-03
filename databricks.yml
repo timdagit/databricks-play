@@ -1,0 +1,35 @@
+bundle:
+  name: bakehouse
+
+include:
+  - resources/*.yml
+
+artifacts:
+  bakehouse_core:
+    type: whl
+    path: .
+    build: uv build --wheel
+    files:
+      - source: dist/*.whl
+
+variables:
+  catalog:
+    description: Unity Catalog catalog for this target (created in az-inf).
+    default: bakehouse_dev
+  idle_stop_minutes:
+    description: Idle minutes before anything that bills while running stops. Lakebase minimum is 1 minute.
+    default: 1
+  job_timeout_seconds:
+    description: Run timeout for jobs. Only catches runaways, since a job has no idle state.
+    default: 900
+
+presets:
+  tags:
+    project: bakehouse-poc
+    env: ${bundle.target}
+    owner: tim
+
+targets:
+  dev:
+    mode: development
+    default: true

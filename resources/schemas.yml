@@ -1,0 +1,32 @@
+resources:
+  schemas:
+    bronze:
+      catalog_name: ${var.catalog}
+      name: bronze
+      comment: Raw simulator files only, in the raw volume. No Delta tables.
+    silver:
+      catalog_name: ${var.catalog}
+      name: silver
+      comment: Cleaned, deduplicated tables loaded by Auto Loader, plus quarantine tables.
+    gold:
+      catalog_name: ${var.catalog}
+      name: gold
+      comment: Business outputs driven by the parameters.
+    ops:
+      catalog_name: ${var.catalog}
+      name: ops
+      comment: Simulator clock, run and reset logs, parameters (Delta backend) and checkpoints.
+
+  volumes:
+    raw:
+      catalog_name: ${var.catalog}
+      schema_name: ${resources.schemas.bronze.name}
+      name: raw
+      volume_type: MANAGED
+      comment: Daily raw files from the simulator, laid out as /{entity}/date=YYYY-MM-DD/.
+    checkpoints:
+      catalog_name: ${var.catalog}
+      schema_name: ${resources.schemas.ops.name}
+      name: checkpoints
+      volume_type: MANAGED
+      comment: Auto Loader checkpoints.
