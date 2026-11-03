@@ -217,3 +217,50 @@ def test_lakebase_response_without_a_token_is_an_error():
     provider, _ = make_provider(client)
     with pytest.raises(RuntimeError, match="no token"):
         provider.get_token()
+
+
+def test_lakebase_token_accepts_the_protobuf_timestamp_the_sdk_returns():
+    from google.protobuf.timestamp_pb2 import Timestamp
+
+    expires = Timestamp()
+    expires.FromDatetime(START + timedelta(hours=1))
+    client = SimpleNamespace(
+        postgres=SimpleNamespace(
+            generate_database_credential=lambda endpoint: SimpleNamespace(
+                token="t", expire_time=expires
+            )
+        )
+    )
+    provider, clock = make_provider(client)
+    assert provider.get_token() == "t"
+    clock["now"] = START + timedelta(minutes=57)
+    assert provider.get_token() == "t"  # cached: the expiry was understood
+
+
+def test_lakebase_token_with_an_unrecognised_expiry_type_falls_back():
+    client = SimpleNamespace(
+        postgres=SimpleNamespace(
+            generate_database_credential=lambda endpoint: SimpleNamespace(
+                token="t", expire_time="soon"
+            )
+        )
+    )
+    provider, clock = make_provider(client)
+    provider.get_token()
+    clock["now"] = START + timedelta(minutes=9, seconds=30)
+    assert provider.get_token() == "t"  # refreshed after the fallback lifetime, no crash
+
+
+def test_lakebase_token_works_with_the_sdks_own_credential_object():
+    from databricks.sdk.service.postgres import DatabaseCredential
+
+    credential = DatabaseCredential.from_dict(
+        {"token": "real-token", "expire_time": "2026-11-03T13:00:00Z"}
+    )
+    client = SimpleNamespace(
+        postgres=SimpleNamespace(generate_database_credential=lambda endpoint: credential)
+    )
+    provider, clock = make_provider(client)
+    assert provider.get_token() == "real-token"
+    clock["now"] = START + timedelta(minutes=57)
+    assert provider.get_token() == "real-token"  # the real expiry (one hour out) was understood

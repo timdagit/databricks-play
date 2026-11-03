@@ -53,6 +53,22 @@ def user_from_headers(headers: Mapping[str, str], fallback: str = "unknown") -> 
     return lowered.get(FORWARDED_EMAIL_HEADER.lower()) or fallback
 
 
+def _as_datetime(value: object) -> datetime | None:
+    """A timezone-aware datetime from what the SDK returns, or None if there is no expiry.
+
+    The SDK gives a protobuf `Timestamp` (which has `ToDatetime`). A plain `datetime` is
+    accepted too, and a naive one is taken as UTC.
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
+    to_datetime = getattr(value, "ToDatetime", None)
+    if callable(to_datetime):
+        return to_datetime(tzinfo=UTC)
+    return None
+
+
 class LakebaseTokenProvider:
     """A Lakebase login token from the Databricks SDK, reused until shortly before it expires.
 
@@ -83,11 +99,9 @@ class LakebaseTokenProvider:
             credential = self._client.postgres.generate_database_credential(endpoint=self._endpoint)
             if not credential.token:
                 raise RuntimeError("Lakebase returned no token")
-            expires = credential.expire_time
-            if expires is None:
-                expires = now + timedelta(seconds=self.FALLBACK_LIFETIME_SECONDS)
-            elif expires.tzinfo is None:
-                expires = expires.replace(tzinfo=UTC)
+            expires = _as_datetime(credential.expire_time) or now + timedelta(
+                seconds=self.FALLBACK_LIFETIME_SECONDS
+            )
             self._token = credential.token
             self._refresh_at = expires - timedelta(seconds=self.REFRESH_BEFORE_SECONDS)
         return self._token

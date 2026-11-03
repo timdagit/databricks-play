@@ -5,7 +5,8 @@
 name = "param-admin"
 version = "0.1.0"
 description = "Parameter admin app for the Bakehouse PoC."
-requires-python = ">=3.12"
+# Capped at 3.12 like the rest of the project: without a cap the platform picks the newest.
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "dash>=4.5,<5",
     "databricks-sdk>=0.160",
