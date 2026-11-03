@@ -77,3 +77,11 @@ Departures from `SPEC.md` and `CLAUDE_CODE_GUIDE.md`, and choices made along the
 - **Serverless gotcha:** `foreachBatch` runs in a separate Python process, so values set in the handler never reach the main program. `silver_build` now writes each batch's counts to files under the checkpoints volume (`_stats/<run id>`) and reads them back.
 - **Not yet exercised on real data:** SCD2 with an actual change (days 1 to 5 released no changed customers or franchises), `late_files`, `underperforming_franchise` and `negative_review_burst`. The synthetic phase starts on virtual day 18.
 - **Note:** gold logs a Spark warning about a window with no partition, from the supplier share total. The data is tiny, so it is left as is.
+
+## 2026-11-03: franchise flags, after days 1 to 19
+
+- **Finding.** With flags comparing a franchise's last 3 days with all earlier days, 36 of 48 franchises were flagged on at least one day, and 25 on day 19. The network median change was -26%, because days 18 and 19 are a weekend, and a franchise sells only 4 to 5 transactions a day, so a 3-day average swings by 30% or more by chance.
+- **Change.** The recent window is now 7 days (a full weekly cycle), and the flag compares a franchise's change with the network's change over the same windows (`relative_change_pct`). `underperform_pct` now means how much worse than the network. `franchise_flags` gains `network_change_pct` and `relative_change_pct`.
+- **Gold tables evolve.** `GoldTables.ensure_tables` adds columns that a table lacks, so adding a column no longer needs a manual drop. New columns are null on old rows until `recompute_gold` runs. Removing or renaming a column still needs a deliberate drop and rebuild, and the job says so.
+- **Still to calibrate.** The `underperform_pct` default (0.20) once the flag counts on the new rule are known.
+- Also removed the no-partition window from the supplier shares by computing the total once.

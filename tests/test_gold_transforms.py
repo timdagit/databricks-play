@@ -36,32 +36,56 @@ def test_daily_kpis_only_cover_the_day(spark):
     assert out[1]["as_of_date"] == D1
 
 
-def test_flags_mark_a_franchise_whose_recent_revenue_drops(spark):
-    # Franchise 1 earns 100 a day for 6 days then 40 for the last 3. Franchise 2 stays level.
+def two_weeks(spark, revenues):
+    """One transaction per franchise per day for 14 days.
+
+    `revenues` maps franchise to (daily revenue in the first 7 days, daily revenue in the last 7).
+    """
     rows = []
-    for d in range(9):
-        rows.append((d, 1, 10, 100 if d < 6 else 40))
-        rows.append((d, 2, 10, 100))
-    as_of = D1 + timedelta(days=8)
-    out = by(gold.franchise_flags(txns(spark, rows), as_of, Decimal("0.20"), 5))
+    for day in range(14):
+        for franchise, (earlier, recent) in revenues.items():
+            rows.append((day, franchise, 10, earlier if day < 7 else recent))
+    return txns(spark, rows), D1 + timedelta(days=13)
+
+
+def test_flags_mark_a_franchise_doing_worse_than_the_network(spark):
+    t, as_of = two_weeks(spark, {1: (100, 30), 2: (100, 100), 3: (100, 100)})
+    out = by(gold.franchise_flags(t, as_of, Decimal("0.20"), 5))
+    assert out[1]["change_pct"] == pytest.approx(-0.7)
+    assert out[1]["network_change_pct"] == pytest.approx(230 / 300 - 1)
+    assert out[1]["relative_change_pct"] == pytest.approx(0.3 / (230 / 300) - 1)
     assert out[1]["underperforming"] is True
-    assert out[1]["change_pct"] == pytest.approx(-0.6)
     assert out[2]["underperforming"] is False
+    assert out[2]["relative_change_pct"] > 0
+
+
+def test_a_network_wide_dip_flags_nobody(spark):
+    t, as_of = two_weeks(spark, {1: (100, 70), 2: (100, 70), 3: (100, 70)})
+    out = by(gold.franchise_flags(t, as_of, Decimal("0.20"), 5))
+    assert all(r["change_pct"] == pytest.approx(-0.3) for r in out.values())
+    assert all(r["relative_change_pct"] == pytest.approx(0) for r in out.values())
+    assert not any(r["underperforming"] for r in out.values())
+
+
+def test_flags_rank_eligible_franchises_by_recent_revenue(spark):
+    t, as_of = two_weeks(spark, {1: (100, 100), 2: (100, 200)})
+    out = by(gold.franchise_flags(t, as_of, Decimal("0.20"), 5))
     assert out[2]["revenue_rank"] == 1
     assert out[1]["revenue_rank"] == 2
 
 
 def test_flags_need_enough_earlier_transactions(spark):
-    rows = [(d, 1, 10, 100 if d < 6 else 10) for d in range(9)]
-    out = by(gold.franchise_flags(txns(spark, rows), D1 + timedelta(days=8), Decimal("0.2"), 50))
+    t, as_of = two_weeks(spark, {1: (100, 10), 2: (100, 100)})
+    out = by(gold.franchise_flags(t, as_of, Decimal("0.2"), 50))
     assert out[1]["eligible"] is False
     assert out[1]["underperforming"] is False
     assert out[1]["revenue_rank"] is None
 
 
-def test_flags_have_no_comparison_in_the_first_days(spark):
+def test_flags_have_no_comparison_in_the_first_week(spark):
     out = by(gold.franchise_flags(txns(spark, [(0, 1, 10, 100)]), D1, Decimal("0.2"), 1))
     assert out[1]["change_pct"] is None
+    assert out[1]["relative_change_pct"] is None
     assert out[1]["underperforming"] is False
 
 

@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from bakehouse_core.io.gold_tables import GOLD_TABLES, GoldTables
+from bakehouse_core.io.gold_tables import GOLD_TABLES, GoldTables, missing_columns
 from bakehouse_core.jobs.gold_build import build_day, days_to_build
 from bakehouse_core.jobs.store import InMemoryOpsStore, RunLogEntry
 from bakehouse_core.params import model
@@ -59,6 +59,19 @@ def test_last_success_date_ignores_failures_and_other_jobs():
 def test_name_rejects_unknown_tables():
     with pytest.raises(ValueError, match="unknown gold table"):
         GoldTables(object(), "cat").name("nope")
+
+
+def test_missing_columns_lists_what_a_table_lacks():
+    wanted = list(GOLD_TABLES["review_alerts"])
+    assert missing_columns(wanted, "review_alerts") == {}
+    assert missing_columns(wanted[:-1], "review_alerts") == {
+        wanted[-1]: GOLD_TABLES["review_alerts"][wanted[-1]]
+    }
+
+
+def test_missing_columns_refuses_to_drop_columns():
+    with pytest.raises(ValueError, match="drop the table"):
+        missing_columns([*GOLD_TABLES["review_alerts"], "old_column"], "review_alerts")
 
 
 def test_every_table_starts_with_as_of_date():

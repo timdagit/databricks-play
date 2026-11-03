@@ -18,7 +18,7 @@ from pyspark.sql import functions as F
 from pyspark.sql.window import Window
 
 WINDOW_DAYS = 7  # trailing window for supplier concentration and review alerts
-RECENT_DAYS = 3  # "recent" days compared with everything before them, for flags
+RECENT_DAYS = 7  # a full weekly cycle, compared with everything before it, for flags
 
 # Keyword rule for a negative review. The real sample reviews are worded differently, so some
 # would be missed. A sentiment model is out of scope for this PoC.
@@ -74,15 +74,27 @@ def franchise_daily_kpis(
     return _stamp(kpis, as_of)
 
 
+def _change(recent: float | None, earlier: float | None) -> float | None:
+    """Relative change from `earlier` to `recent`, or None if there is nothing to compare."""
+    if recent is None or not earlier:
+        return None
+    return recent / earlier - 1
+
+
 def franchise_flags(
     transactions: DataFrame,
     as_of: date,
     underperform_pct: Decimal | float,
     min_txn_for_ranking: int,
 ) -> DataFrame:
-    """Compare each franchise's average daily revenue over the last `RECENT_DAYS` days with
-    all the days before. A franchise is only ranked, and only flagged, once the earlier days
-    hold at least `min_txn_for_ranking` transactions."""
+    """Flag franchises that do worse than the network.
+
+    A franchise's change is its average daily revenue over the last `RECENT_DAYS` days against
+    all the days before. `relative_change_pct` compares that with the same change for the whole
+    network, so a network-wide dip (a quiet weekend) does not flag everyone. A franchise is only
+    ranked, and only flagged, once the earlier days hold at least `min_txn_for_ranking`
+    transactions.
+    """
     first = _first_day(transactions, as_of)
     recent_start = as_of - timedelta(days=RECENT_DAYS - 1)
     recent_days = (as_of - max(first, recent_start)).days + 1
@@ -99,38 +111,46 @@ def franchise_flags(
             F.sum(F.when(~is_recent, 1).otherwise(0)).alias("earlier_txn_count"),
         )
     )
-    recent_avg = F.col("recent_revenue") / F.lit(recent_days)
-    earlier_avg = (
-        F.col("earlier_revenue") / F.lit(earlier_days)
-        if earlier_days
-        else F.lit(None).cast("double")
+    network = totals.agg(F.sum("recent_revenue"), F.sum("earlier_revenue")).first()
+    network_change = _change(
+        network[0] / recent_days if network[0] is not None else None,
+        network[1] / earlier_days if earlier_days and network[1] is not None else None,
+    )
+    if network_change is not None and network_change <= -1:
+        network_change = None  # the network earned nothing recently: no meaningful comparison
+
+    own_change = F.when(
+        F.col("earlier_avg_revenue") > 0,
+        (F.col("recent_avg_revenue") - F.col("earlier_avg_revenue")) / F.col("earlier_avg_revenue"),
     )
     flags = (
-        totals.withColumn("recent_avg_revenue", recent_avg)
-        .withColumn("earlier_avg_revenue", earlier_avg)
-        .withColumn(
-            "change_pct",
-            F.when(
-                F.col("earlier_avg_revenue") > 0,
-                (F.col("recent_avg_revenue") - F.col("earlier_avg_revenue"))
-                / F.col("earlier_avg_revenue"),
-            ),
-        )
+        totals.withColumn("recent_avg_revenue", F.col("recent_revenue") / F.lit(recent_days))
+        .withColumn("earlier_avg_revenue", _average(F.col("earlier_revenue"), earlier_days))
+        .withColumn("change_pct", own_change)
+        .withColumn("network_change_pct", F.lit(network_change).cast("double"))
         .withColumn("eligible", F.col("earlier_txn_count") >= F.lit(min_txn_for_ranking))
     )
+    if network_change is None:
+        relative = F.lit(None).cast("double")
+    else:
+        relative = F.when(
+            F.col("change_pct").isNotNull(),
+            (1 + F.col("change_pct")) / F.lit(1 + network_change) - 1,
+        )
     rank = F.dense_rank().over(
         Window.partitionBy("eligible").orderBy(F.col("recent_avg_revenue").desc())
     )
-    flags = flags.withColumn("revenue_rank", F.when(F.col("eligible"), rank)).withColumn(
-        "underperforming",
-        F.col("eligible")
-        & F.col("change_pct").isNotNull()
-        & (F.col("change_pct") <= -F.lit(float(underperform_pct))),
+    flags = (
+        flags.withColumn("relative_change_pct", relative)
+        .withColumn("revenue_rank", F.when(F.col("eligible"), rank))
+        .withColumn(
+            "underperforming",
+            F.col("eligible")
+            & F.col("relative_change_pct").isNotNull()
+            & (F.col("relative_change_pct") <= -F.lit(float(underperform_pct))),
+        )
     )
-    return _stamp(
-        flags.drop("recent_revenue", "earlier_revenue"),
-        as_of,
-    )
+    return _stamp(flags.drop("recent_revenue", "earlier_revenue"), as_of)
 
 
 def customer_loyalty_tiers(
@@ -186,11 +206,11 @@ def supplier_concentration(
     details = suppliers.select(
         "supplierID", "ingredient", "continent", F.lit(True).alias("supplier_known")
     )
-    total = F.sum("revenue").over(Window.partitionBy())
+    total = by_supplier.agg(F.sum("revenue")).first()[0] or 1
     shared = (
         by_supplier.join(details, "supplierID", "left")
         .withColumn("supplier_known", F.coalesce(F.col("supplier_known"), F.lit(False)))
-        .withColumn("revenue_share", F.col("revenue") / total)
+        .withColumn("revenue_share", F.col("revenue") / F.lit(total))
         .withColumn("concentrated", F.col("revenue_share") > F.lit(float(threshold)))
     )
     return _stamp(shared, as_of)

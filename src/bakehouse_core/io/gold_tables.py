@@ -29,6 +29,8 @@ GOLD_TABLES: dict[str, dict[str, str]] = {
         "recent_avg_revenue": "double",
         "earlier_avg_revenue": "double",
         "change_pct": "double",
+        "network_change_pct": "double",
+        "relative_change_pct": "double",
         "eligible": "boolean",
         "revenue_rank": "int",
         "underperforming": "boolean",
@@ -69,6 +71,22 @@ GOLD_TABLES: dict[str, dict[str, str]] = {
 }
 
 
+def missing_columns(existing: list[str], table: str) -> dict[str, str]:
+    """Columns the table definition has but the existing table lacks, with their types.
+
+    Raises if the existing table has a column the definition no longer has, since that needs
+    a deliberate rebuild rather than a silent change.
+    """
+    wanted = GOLD_TABLES[table]
+    extra = [c for c in existing if c not in wanted]
+    if extra:
+        raise ValueError(
+            f"gold.{table} has columns not in its definition ({', '.join(extra)}); "
+            f"drop the table so it can be recreated, then run recompute_gold"
+        )
+    return {c: t for c, t in wanted.items() if c not in existing}
+
+
 def conform(df: Any, table: str) -> Any:
     """Select and cast a DataFrame to the table's columns, in order."""
     return df.select(*[F.col(c).cast(t).alias(c) for c, t in GOLD_TABLES[table].items()])
@@ -85,8 +103,15 @@ class GoldTables:
         return f"{self._catalog}.gold.{ident(table)}"
 
     def ensure_tables(self) -> None:
+        """Create missing tables and add columns a table lacks. New columns are null on old
+        rows until `recompute_gold` rebuilds them."""
         for table, columns in GOLD_TABLES.items():
-            self._spark.sql(create_table_sql(self.name(table), columns))
+            full = self.name(table)
+            self._spark.sql(create_table_sql(full, columns))
+            added = missing_columns(self._spark.table(full).columns, table)
+            if added:
+                cols = ", ".join(f"{ident(c)} {t.upper()}" for c, t in added.items())
+                self._spark.sql(f"ALTER TABLE {full} ADD COLUMNS ({cols})")
 
     def replace_day(self, table: str, df: Any, as_of: date) -> None:
         """Atomically replace the table's rows for one day with `df`."""
