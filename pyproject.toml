@@ -8,6 +8,10 @@ dependencies = [
     "sqlalchemy>=2.1.6",
 ]
 
+[project.scripts]
+bakehouse-simulate = "bakehouse_core.jobs.simulate:main"
+bakehouse-reset = "bakehouse_core.jobs.reset:main"
+
 [dependency-groups]
 dev = [
     "pytest>=9.2.0",
