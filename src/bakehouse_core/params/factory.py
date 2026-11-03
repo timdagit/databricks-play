@@ -42,7 +42,16 @@ def get_repository(
     backend = env.get("PARAM_BACKEND", "").lower()
 
     if backend == "sqlite":
-        return SqlRepository(sa.create_engine(env.get("DATABASE_URL", "sqlite://")))
+        url = env.get("DATABASE_URL", "sqlite://")
+        if url in ("sqlite://", "sqlite:///:memory:"):
+            # An in-memory database is private to one connection, and a web server uses
+            # several threads, so share a single connection between them.
+            return SqlRepository(
+                sa.create_engine(
+                    url, poolclass=sa.pool.StaticPool, connect_args={"check_same_thread": False}
+                )
+            )
+        return SqlRepository(sa.create_engine(url))
 
     if backend == "postgres":
         url = _require(env, "DATABASE_URL", backend)

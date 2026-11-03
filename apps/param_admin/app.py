@@ -29,7 +29,8 @@ def _trigger() -> JobTrigger:
 
 backend = os.environ.get("PARAM_BACKEND", "sqlite").lower()
 repo = get_repository(
-    token_provider=StaticTokenProvider.from_env() if backend == "lakebase" else None
+    {**os.environ, "PARAM_BACKEND": backend},
+    token_provider=StaticTokenProvider.from_env() if backend == "lakebase" else None,
 )
 repo.ensure_schema()
 

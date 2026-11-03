@@ -128,3 +128,19 @@ def test_fake_job_trigger_records_calls():
     trigger = FakeJobTrigger()
     assert trigger.trigger("daily_run", {"triggered_by": "app"}) == "fake-run-1"
     assert trigger.calls == [("daily_run", {"triggered_by": "app"})]
+
+
+def test_in_memory_sqlite_is_shared_between_threads():
+    import threading
+
+    repo = factory.get_repository({"PARAM_BACKEND": "sqlite"})
+    repo.ensure_schema()
+    seen = {}
+
+    def read():
+        seen["values"] = repo.load_current()
+
+    thread = threading.Thread(target=read)
+    thread.start()
+    thread.join()
+    assert seen["values"] == model.defaults()
