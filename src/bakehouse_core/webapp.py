@@ -57,6 +57,7 @@ class TableUpdate:
 class Poll:
     buttons_disabled: bool
     text: str
+    url: str | None = None  # the run page of the run being shown, if it has one
 
 
 class Handlers:
@@ -120,10 +121,12 @@ class Handlers:
         """Status for the page. Never touches the idle tracker: polling is not activity."""
         parts = []
         tracked_id = None
+        url = None
         if tracked:
             try:
                 status = self.trigger.status(tracked["run_id"])
                 tracked_id = tracked["run_id"]
+                url = status.url
                 parts.append(actions.describe_run(status, tracked["label"]))
             except UnknownRunError:
                 # The server restarted, or the run is gone: say so instead of failing.
@@ -131,7 +134,8 @@ class Handlers:
         active = actions.any_active(self.trigger)
         if active is not None and active.run_id != tracked_id:
             parts.append(actions.describe_run(active))
-        return Poll(active is not None, " | ".join(parts) or "No run in progress.")
+            url = url or active.url
+        return Poll(active is not None, " | ".join(parts) or "No run in progress.", url)
 
 
 def _message(update: TableUpdate) -> list:
@@ -282,7 +286,10 @@ def create_app(
     )
     def on_poll(_n, tracked):
         poll = handlers.poll(tracked)
-        return poll.text, poll.buttons_disabled, poll.buttons_disabled
+        shown = [poll.text]
+        if poll.url:
+            shown += [" ", html.A("open the run", href=poll.url, target="_blank")]
+        return shown, poll.buttons_disabled, poll.buttons_disabled
 
     @app.server.route("/idle")
     def idle():

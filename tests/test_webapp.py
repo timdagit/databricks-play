@@ -181,7 +181,7 @@ def test_poll_callback_round_trip(client):
     response = client.post("/_dash-update-component", json=payload)
     assert response.status_code == 200
     body = response.get_json()["response"]
-    assert body["run-status"]["children"] == "No run in progress."
+    assert body["run-status"]["children"] == ["No run in progress."]
     assert body["rerun_etl"]["disabled"] is False
 
 
@@ -233,3 +233,25 @@ def test_rerun_with_nothing_pending_rebuilds_everything(handlers, parts):
 def test_next_day_keeps_the_pending_days(handlers):
     _, _, pending = handlers.run("next_day", "tim", {"from": "2024-05-10"})
     assert pending == {"from": "2024-05-10"}
+
+
+def test_poll_carries_the_run_page_link():
+    from bakehouse_core.jobs.trigger import RunStatus
+
+    class LinkedTrigger(FakeJobTrigger):
+        def status(self, run_id):
+            return RunStatus(run_id, "daily_run", "RUNNING", 3.0, "https://example.com/run/1")
+
+        def active_run(self, job_name):
+            return self.status("x") if job_name == "daily_run" else None
+
+    repo = SqlRepository(sa.create_engine("sqlite://"))
+    repo.ensure_schema()
+    handlers = Handlers(repo, LinkedTrigger(), IdleTracker())
+    tracked = {"run_id": "1", "label": "Run next day"}
+    assert handlers.poll(tracked).url == "https://example.com/run/1"
+    assert handlers.poll(None).url == "https://example.com/run/1"  # an active run from elsewhere
+
+
+def test_poll_without_a_link_has_none(handlers):
+    assert handlers.poll(None).url is None
