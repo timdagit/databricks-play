@@ -111,7 +111,7 @@ DEFINITIONS: tuple[ParamDefinition, ...] = (
     ParamDefinition(
         "supplier_concentration_threshold",
         "decimal",
-        _d("0.60"),
+        _d("0.10"),
         _d("0.10"),
         _d("1.00"),
         "fraction",

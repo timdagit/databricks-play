@@ -42,6 +42,7 @@ def build_day(
     transactions: Any,
     reviews: Any,
     franchises: Any,
+    suppliers: Any,
     as_of: date,
     params: dict[str, model.Value],
 ) -> dict[str, Any]:
@@ -61,7 +62,7 @@ def build_day(
             int(params["loyalty_lookback_days"]),
         ),
         "supplier_concentration": gold.supplier_concentration(
-            transactions, franchises, as_of, params["supplier_concentration_threshold"]
+            transactions, franchises, suppliers, as_of, params["supplier_concentration_threshold"]
         ),
         "review_alerts": gold.review_alerts(reviews, as_of, int(params["review_alert_min_count"])),
         "sales_vs_target": gold.sales_vs_target(
@@ -100,11 +101,14 @@ def run_gold_build(
         transactions = spark.table(f"{catalog}.silver.transactions")
         reviews = spark.table(f"{catalog}.silver.reviews")
         franchises = spark.table(f"{catalog}.silver.franchises")
+        suppliers = spark.table(f"{catalog}.silver.suppliers")
         versions: dict[str, dict[str, int]] = {}
         for day in days:
             params = run_params if day == state.virtual_date else repo.load_as_of(day)
             versions[day.isoformat()] = repo.versions_as_of(day)
-            for table, df in build_day(transactions, reviews, franchises, day, params).items():
+            for table, df in build_day(
+                transactions, reviews, franchises, suppliers, day, params
+            ).items():
                 tables.replace_day(table, df, day)
         details["parameter_versions"] = versions
         details["row_counts"] = tables.row_counts()

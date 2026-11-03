@@ -43,6 +43,9 @@ GOLD_TABLES: dict[str, dict[str, str]] = {
     "supplier_concentration": {
         "as_of_date": "date",
         "supplierID": "bigint",
+        "ingredient": "string",
+        "continent": "string",
+        "supplier_known": "boolean",
         "revenue": "bigint",
         "franchises": "bigint",
         "revenue_share": "double",

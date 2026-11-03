@@ -91,10 +91,19 @@ def franchise_rows(spark, rows):
     )
 
 
+def supplier_rows(spark, rows):
+    """rows: (supplierID, ingredient, continent)."""
+    return spark.createDataFrame(rows, "supplierID long, ingredient string, continent string")
+
+
+NO_SUPPLIERS = [(100, "cacao", "Asia"), (200, "vanilla", "Europe")]
+
+
 def test_supplier_concentration_flags_a_dominant_supplier(spark):
     t = txns(spark, [(0, 1, 10, 700), (0, 2, 10, 200), (0, 3, 10, 100)])
     f = franchise_rows(spark, [(1, 100, 0, None), (2, 200, 0, None), (3, 200, 0, None)])
-    out = by(gold.supplier_concentration(t, f, D1, Decimal("0.60")), "supplierID")
+    s = supplier_rows(spark, NO_SUPPLIERS)
+    out = by(gold.supplier_concentration(t, f, s, D1, Decimal("0.60")), "supplierID")
     assert out[100]["revenue_share"] == pytest.approx(0.7)
     assert out[100]["concentrated"] is True
     assert out[200]["concentrated"] is False
@@ -110,6 +119,19 @@ def test_supplier_concentration_uses_the_supplier_in_force_that_day(spark):
     )
     assert set(day0) == {100}
     assert set(day1) == {200}
+
+
+def test_supplier_concentration_adds_details_and_keeps_unknown_suppliers(spark):
+    t = txns(spark, [(0, 1, 10, 80), (0, 2, 10, 20)])
+    f = franchise_rows(spark, [(1, 100, 0, None), (2, 999, 0, None)])
+    s = supplier_rows(spark, NO_SUPPLIERS)
+    out = by(gold.supplier_concentration(t, f, s, D1, Decimal("0.5")), "supplierID")
+    assert out[100]["ingredient"] == "cacao"
+    assert out[100]["continent"] == "Asia"
+    assert out[100]["supplier_known"] is True
+    assert out[999]["supplier_known"] is False
+    assert out[999]["ingredient"] is None
+    assert out[999]["revenue_share"] == pytest.approx(0.2)
 
 
 def test_review_alerts_count_negative_reviews_in_the_window(spark):

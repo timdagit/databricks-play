@@ -157,13 +157,16 @@ def customer_loyalty_tiers(
 def supplier_concentration(
     transactions: DataFrame,
     franchises: DataFrame,
+    suppliers: DataFrame,
     as_of: date,
     threshold: Decimal | float,
 ) -> DataFrame:
     """Share of the window's revenue sold through the franchises each supplier serves.
 
     `franchises` is the SCD2 silver table. The row in force on `as_of` gives each franchise's
-    supplier, so a supplier change moves revenue from the day it took effect.
+    supplier, so a supplier change moves revenue from the day it took effect. `suppliers` adds
+    the ingredient and continent. A supplier id that is not in the suppliers table is kept, with
+    `supplier_known` false, so the gap in the source data shows up instead of disappearing.
     """
     in_force = franchises.filter(
         (F.col("_valid_from") <= F.lit(as_of))
@@ -180,9 +183,15 @@ def supplier_concentration(
         .groupBy("supplierID")
         .agg(F.sum("revenue").alias("revenue"), F.count(F.lit(1)).alias("franchises"))
     )
+    details = suppliers.select(
+        "supplierID", "ingredient", "continent", F.lit(True).alias("supplier_known")
+    )
     total = F.sum("revenue").over(Window.partitionBy())
-    shared = by_supplier.withColumn("revenue_share", F.col("revenue") / total).withColumn(
-        "concentrated", F.col("revenue_share") > F.lit(float(threshold))
+    shared = (
+        by_supplier.join(details, "supplierID", "left")
+        .withColumn("supplier_known", F.coalesce(F.col("supplier_known"), F.lit(False)))
+        .withColumn("revenue_share", F.col("revenue") / total)
+        .withColumn("concentrated", F.col("revenue_share") > F.lit(float(threshold)))
     )
     return _stamp(shared, as_of)
 

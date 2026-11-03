@@ -172,7 +172,7 @@ Defaults are first guesses, to be calibrated in phase 1 from the data's spend di
 | `underperform_pct` | decimal | 0.20 | 0.05–0.50 | franchise flags |
 | `min_txn_for_ranking` | int | 50 | 1–10000 | franchise flags |
 | `promo_discount_rate` | decimal | 0.10 | 0–0.50 | what-if notebook, gold projection |
-| `supplier_concentration_threshold` | decimal | 0.60 | 0.10–1.00 | supplier concentration |
+| `supplier_concentration_threshold` | decimal | 0.10 | 0.10–1.00 | supplier concentration |
 | `review_alert_min_count` | int | 3 | 1–50 | review alerts (7-day window) |
 | `dq_max_null_pct` | decimal | 0.02 | 0–0.50 | silver DQ checks |
 | `sales_target_uplift_pct` | decimal | 0.05 | -0.50–1.00 | sales vs target |

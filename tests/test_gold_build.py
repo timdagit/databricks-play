@@ -80,7 +80,10 @@ def test_build_day_returns_every_table_with_the_declared_columns(spark):
         [(1, 7, D, None)],
         "franchiseID long, supplierID long, _valid_from date, _valid_to date",
     )
-    out = build_day(transactions, reviews, franchises, D, model.defaults())
+    suppliers = spark.createDataFrame(
+        [(7, "cacao", "Asia")], "supplierID long, ingredient string, continent string"
+    )
+    out = build_day(transactions, reviews, franchises, suppliers, D, model.defaults())
     assert set(out) == set(GOLD_TABLES)
     for table, df in out.items():
         assert set(df.columns) == set(GOLD_TABLES[table]), table
