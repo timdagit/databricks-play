@@ -17,13 +17,18 @@ resources:
         env:
           - name: PARAM_BACKEND
             value: lakebase
-          # Real runs arrive in workstream 9. Until then the buttons are simulated.
           - name: JOB_TRIGGER
-            value: fake
+            value: databricks
+          # The ids of the jobs the app may run, from its job resources below.
+          - name: ETL_JOB_ID
+            value_from: etl-job
+          - name: DAILY_RUN_JOB_ID
+            value_from: daily-run-job
           - name: LAKEBASE_ENDPOINT
             value: projects/${resources.postgres_projects.params_project.project_id}/branches/production/endpoints/primary
-          - name: IDLE_ENABLED
-            value: "false"
+          # Stop the app after this many idle minutes. It stops itself through the Apps API.
+          - name: IDLE_STOP_MINUTES
+            value: "${var.idle_stop_minutes}"
       resources:
         - name: lakebase
           postgres:

@@ -34,7 +34,7 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       JOB_TRIGGER: fake
       APP_USER: ${APP_USER}
-      IDLE_ENABLED: "false"
+      IDLE_STOP_MINUTES: "0"
     ports:
       - "127.0.0.1:${APP_HOST_PORT}:8050"
 

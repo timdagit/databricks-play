@@ -11,7 +11,7 @@ It exercises Python ETL jobs, Lakeflow Designer, Databricks Apps (a Dash app tha
 
 ## Status
 
-Early. Built and working on Databricks: the `dev` bundle (schemas, volumes), the simulator and the reset job. The ETL (`load_params`, `silver_build`, `gold_build`, chained by `daily_run`) runs on Databricks, with the Delta parameter store. Built and tested locally: the SQLite parameter store and its backend factory. The parameter admin app runs locally (SQLite, or Postgres in Docker) and on Databricks Apps with Lakebase, and the ETL reads the saved parameters from Lakebase. The run buttons are still simulated. Not built yet: the real job trigger and idle stop, the Delta backend in the app, Designer and the notebooks.
+Early. Built and working on Databricks: the `dev` bundle (schemas, volumes), the simulator and the reset job. The ETL (`load_params`, `silver_build`, `gold_build`, chained by `daily_run`) runs on Databricks, with the Delta parameter store. Built and tested locally: the SQLite parameter store and its backend factory. The parameter admin app runs locally (SQLite, or Postgres in Docker) and on Databricks Apps with Lakebase, and the ETL reads the saved parameters from Lakebase. The run buttons start the real jobs, and the app stops itself after a minute of inactivity. Not built yet: the Delta backend in the app, Designer and the notebooks.
 
 ## Local development
 
@@ -41,7 +41,7 @@ docker compose --env-file .env.local up --build
 docker compose down -v                          # back to the seeded defaults
 ```
 
-Settings are environment variables: `PARAM_BACKEND`, `DATABASE_URL`, `JOB_TRIGGER`, `APP_USER`, `IDLE_ENABLED`. The app creates its tables and the default parameters when it starts.
+Settings are environment variables: `PARAM_BACKEND`, `DATABASE_URL`, `JOB_TRIGGER`, `APP_USER`, `IDLE_STOP_MINUTES`. The app creates its tables and the default parameters when it starts.
 
 ## The parameter app on Databricks
 
@@ -52,7 +52,7 @@ databricks bundle run param_admin -t dev -p personal    # start it (a minute or 
 databricks apps stop bakehouse-param-admin-dev -p personal   # stop it when finished
 ```
 
-Open it from the Apps page in the workspace. It signs you in with workspace SSO and records your email as `updated_by`. A save with the effective-from field blank applies to every virtual day. Press Rerun ETL, or run `bakehouse_etl` with `mode=recompute_gold`, to rebuild gold with the new values. The ETL reads the saved values from Lakebase through its Unity Catalog registration.
+The app stops itself after `idle_stop_minutes` of inactivity (page loads and clicks count, the status polling does not). Open it from the Apps page in the workspace. It signs you in with workspace SSO and records your email as `updated_by`. A save with the effective-from field blank applies to every virtual day. Press Rerun ETL to rebuild gold from the earliest date you saved, or Run next day to release and process one more virtual day. You can also run `bakehouse_etl` with `mode=recompute_gold` (and optionally `from_date=YYYY-MM-DD`). The ETL reads the saved values from Lakebase through its Unity Catalog registration.
 
 The app folder only gets its own files, so every deploy copies `bakehouse_core` into `apps/param_admin/` first (`scripts/stage_app.py`, run by the artifact build). That copy is gitignored.
 

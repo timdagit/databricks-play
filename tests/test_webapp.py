@@ -111,7 +111,7 @@ def test_poll_reports_progress_and_disables_buttons_while_running(handlers, part
     assert handlers.poll(None).text == "No run in progress."
 
 
-def test_polling_is_not_activity_but_user_actions_are(handlers, parts):
+def test_polling_is_not_activity_but_user_actions_and_page_loads_are(handlers, parts):
     tracker, clock = parts[2], parts[3]
     clock.now = 100
     handlers.poll(None)
@@ -122,8 +122,8 @@ def test_polling_is_not_activity_but_user_actions_are(handlers, parts):
     handlers.table_action("reload", None, None, None, None, "tim")
     assert tracker.idle_seconds() == 0
     clock.now = 150
-    handlers.table_action(None, None, None, None, None, "tim")  # page load, not a user action
-    assert tracker.idle_seconds() == 20
+    handlers.table_action(None, None, None, None, None, "tim")  # opening the page counts
+    assert tracker.idle_seconds() == 0
 
 
 # --- the real Flask app --------------------------------------------------------------------
@@ -148,6 +148,20 @@ def test_idle_endpoint_reports_disabled_locally(client):
     body = client.get("/idle").get_json()
     assert body["enabled"] is False
     assert body["idle_seconds"] >= 0
+
+
+def test_idle_endpoint_reports_the_limit_when_the_watchdog_is_on(parts):
+    repo, trigger, tracker, _ = parts
+    app = create_app(
+        repo,
+        trigger,
+        tracker=tracker,
+        idle_stop_seconds=60,
+        idle_grace_seconds=10**9,  # so the background thread cannot act during the test
+        stop_app=lambda: None,
+    )
+    body = app.server.test_client().get("/idle").get_json()
+    assert (body["enabled"], body["limit_seconds"]) == (True, 60)
 
 
 def test_poll_callback_round_trip(client):

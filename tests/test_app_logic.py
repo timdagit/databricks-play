@@ -4,7 +4,7 @@ from decimal import Decimal
 import pytest
 import sqlalchemy as sa
 
-from bakehouse_core.config.idle import IdleTracker
+from bakehouse_core.config.idle import IdleTracker, IdleWatchdog
 from bakehouse_core.jobs import actions
 from bakehouse_core.jobs.trigger import FakeJobTrigger
 from bakehouse_core.params import model, view
@@ -212,3 +212,78 @@ def test_rerun_from_date():
     assert view.rerun_from_date(None) is None
     assert view.rerun_from_date({"from": None}) is None
     assert view.rerun_from_date({"from": "2024-05-10"}) == date(2024, 5, 10)
+
+
+# --- the idle watchdog --------------------------------------------------------------------
+
+
+def make_watchdog(stop, grace=0, limit=60, retry=300):
+    clock = Clock()
+    tracker = IdleTracker(clock)
+    watchdog = IdleWatchdog(tracker, stop, limit, grace, retry_seconds=retry, clock=clock)
+    return watchdog, tracker, clock
+
+
+def test_watchdog_stops_the_app_once_idle_past_the_limit():
+    calls = []
+    watchdog, _tracker, clock = make_watchdog(lambda: calls.append(1))
+    clock.now = 60
+    assert not watchdog.check()  # exactly at the limit is not past it
+    clock.now = 61
+    assert watchdog.check()
+    assert calls == [1]
+    clock.now = 500
+    assert not watchdog.check()  # asks only once
+    assert calls == [1]
+
+
+def test_a_user_action_resets_the_idle_time():
+    calls = []
+    watchdog, tracker, clock = make_watchdog(lambda: calls.append(1))
+    clock.now = 50
+    tracker.touch()
+    clock.now = 100
+    assert not watchdog.check()
+    clock.now = 111
+    assert watchdog.check()
+
+
+def test_watchdog_waits_out_the_startup_grace_period():
+    calls = []
+    watchdog, _tracker, clock = make_watchdog(lambda: calls.append(1), grace=180)
+    clock.now = 170
+    assert not watchdog.check()
+    clock.now = 181
+    assert watchdog.check()
+
+
+def test_a_refused_stop_is_logged_and_retried_later_not_raised():
+    attempts = []
+
+    def refuse():
+        attempts.append(1)
+        raise PermissionError("the app may not stop itself")
+
+    watchdog, _tracker, clock = make_watchdog(refuse, retry=300)
+    clock.now = 100
+    assert not watchdog.check()
+    assert len(attempts) == 1
+    clock.now = 200
+    assert not watchdog.check()  # still backing off
+    assert len(attempts) == 1
+    clock.now = 401
+    assert not watchdog.check()
+    assert len(attempts) == 2
+    assert not watchdog.stop_requested
+
+
+def test_the_background_thread_runs_checks_and_ends_after_a_stop():
+    import threading
+
+    done = threading.Event()
+    tracker = IdleTracker()
+    watchdog = IdleWatchdog(tracker, done.set, limit_seconds=-1, interval_seconds=0.01)
+    thread = watchdog.start()
+    assert done.wait(timeout=5)
+    thread.join(timeout=5)
+    assert not thread.is_alive()

@@ -16,7 +16,7 @@ from dash import Dash, Input, Output, State, ctx, dash_table, dcc, html
 from flask import jsonify, request
 
 from bakehouse_core.config.identity import user_from_headers
-from bakehouse_core.config.idle import IdleTracker
+from bakehouse_core.config.idle import IdleTracker, IdleWatchdog
 from bakehouse_core.jobs import actions
 from bakehouse_core.jobs.trigger import JobTrigger, UnknownRunError
 from bakehouse_core.params import view
@@ -77,8 +77,7 @@ class Handlers:
     ) -> TableUpdate:
         """Load or reload (`which` is None or `reload`), or save the edits (`save`)."""
         if which != "save" or not edited or original is None:
-            if which is not None:
-                self.tracker.touch()
+            self.tracker.touch()  # opening or reloading the page: a person is here
             rows = view.build_rows(self.repo)
             return TableUpdate(
                 rows, rows, "Loaded the current values." if which else "", pending=pending
@@ -156,12 +155,18 @@ def create_app(
     tracker: IdleTracker | None = None,
     default_user: str = "local-user",
     backend_name: str = "",
-    idle_enabled: bool = False,
+    idle_stop_seconds: float = 0,
+    idle_grace_seconds: float = 180,
+    stop_app: Callable[[], object] | None = None,
     assets_folder: str = "assets",
     resolve_user: Callable[[], str] | None = None,
 ) -> Dash:
     tracker = tracker or IdleTracker()
     handlers = Handlers(repo, trigger, tracker)
+    watchdog = None
+    if idle_stop_seconds > 0 and stop_app is not None:
+        watchdog = IdleWatchdog(tracker, stop_app, idle_stop_seconds, idle_grace_seconds)
+        watchdog.start()
     app = Dash(__name__, assets_folder=assets_folder, title="Bakehouse parameters")
     user_of = resolve_user or (lambda: user_from_headers(request.headers, default_user))
 
@@ -281,6 +286,10 @@ def create_app(
 
     @app.server.route("/idle")
     def idle():
-        return jsonify(enabled=idle_enabled, idle_seconds=round(tracker.idle_seconds(), 1))
+        return jsonify(
+            enabled=watchdog is not None,
+            limit_seconds=idle_stop_seconds if watchdog else None,
+            idle_seconds=round(tracker.idle_seconds(), 1),
+        )
 
     return app

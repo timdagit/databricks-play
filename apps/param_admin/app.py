@@ -9,7 +9,9 @@ Run locally with `uv run python apps/param_admin/app.py`, or in the container wi
 - `JOB_TRIGGER`: `fake` (default) simulates runs, `databricks` starts the real jobs and needs
   `ETL_JOB_ID` and `DAILY_RUN_JOB_ID`
 - `APP_USER`: the name recorded in `updated_by` when no user header is present
-- `IDLE_ENABLED`: `true` makes `/idle` report that the idle watchdog is on
+- `IDLE_STOP_MINUTES`: stop the app after this many idle minutes (0, the default, is off). It
+  stops itself through the Apps API using `DATABRICKS_APP_NAME`, which the platform sets.
+  `IDLE_STARTUP_GRACE_SECONDS` (default 180) delays the first possible stop.
 """
 
 from __future__ import annotations
@@ -54,12 +56,24 @@ repo = get_repository(
 )
 repo.ensure_schema()
 
+
+def _stop_app():
+    """Stop this app through the Apps API (the app's service principal needs CAN_MANAGE)."""
+    from databricks.sdk import WorkspaceClient
+
+    return WorkspaceClient().apps.stop(os.environ["DATABRICKS_APP_NAME"])
+
+
+idle_minutes = float(os.environ.get("IDLE_STOP_MINUTES", "0") or 0)
+
 app = create_app(
     repo,
     _trigger(),
     default_user=os.environ.get("APP_USER", "local-user"),
     backend_name=backend,
-    idle_enabled=os.environ.get("IDLE_ENABLED", "false").lower() == "true",
+    idle_stop_seconds=idle_minutes * 60,
+    idle_grace_seconds=float(os.environ.get("IDLE_STARTUP_GRACE_SECONDS", "180")),
+    stop_app=_stop_app if idle_minutes > 0 else None,
     assets_folder=str(Path(__file__).parent / "assets"),
 )
 server = app.server  # what gunicorn serves

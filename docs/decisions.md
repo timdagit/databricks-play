@@ -126,3 +126,11 @@ Departures from `SPEC.md` and `CLAUDE_CODE_GUIDE.md`, and choices made along the
 
 - **Proven end to end:** `underperform_pct` saved as 0.40 in the app (version 3, from the start) went to Lakebase. `load_params` read it through the Unity Catalog registration and logged it (value `0.4`, version 3). `recompute_gold` then flagged 1 franchise on day 19 instead of 3 at 0.20.
 - **Default.** `param_backend` now defaults to `lakebase`, because the app writes there and a plain deploy must not point the ETL back at Delta. Workstream 10 adds the Delta backend to the app for the comparison, and switching is one variable.
+
+## 2026-11-03: run buttons and idle stop (workstream 9)
+
+- **Real job trigger.** `DatabricksJobTrigger` starts `bakehouse_etl` and `daily_run` with `jobs.run_now(job_parameters=...)`, reads status with `get_run` and finds active runs with `list_runs(active_only=True)`. The app gets the job ids from its job resources (`value_from`), with `CAN_MANAGE_RUN`, and the runs execute as each job's own identity. Both buttons pass the signed-in user's email as `triggered_by`. A run id the platform no longer knows shows as "no longer known" instead of an error.
+- **Reruns cover only the days a save affects.** `bakehouse_etl` has a `from_date` parameter, used by `recompute_gold`. The app remembers the earliest effective date saved since the last rerun (a blank date means every day) and passes it. With nothing remembered, a rerun rebuilds everything.
+- **Idle stop.** A watchdog thread checks every 15 seconds. When no user action, page load or reload has happened for `IDLE_STOP_MINUTES` (the `idle_stop_minutes` variable, default 1), the app calls `apps.stop` on itself. Status polling does not count. It never acts in the first 180 seconds (`IDLE_STARTUP_GRACE_SECONDS`), so a 1-minute limit cannot stop the app before its starter has opened the page. If the stop is refused, it logs the error and retries after 5 minutes.
+- **Untested:** whether the app's service principal may stop its own app. If it cannot, the fallback is the scheduled GitHub workflow in spec 6.4, or a one-off `CAN_MANAGE` grant to the app's service principal.
+- **Not done:** the spec's `ops.app_metrics` event log for idle stops (the stop is logged to the app log instead). It belongs to the comparison work in workstream 13.
