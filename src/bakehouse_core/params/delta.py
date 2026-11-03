@@ -97,7 +97,7 @@ class DeltaRepository(ParamRepository):
                 )
             self._sql(f"INSERT INTO {self._t('param_versions')} VALUES " + ", ".join(rows), **args)
 
-    def _load(self, as_of: date | None) -> dict[str, model.Value]:
+    def _load(self, as_of: date | None) -> dict[str, tuple[int, str]]:
         query = f"SELECT param_key, version, value_text FROM {self._t('param_versions')}"
         args: dict[str, str] = {}
         if as_of is not None:
@@ -105,13 +105,16 @@ class DeltaRepository(ParamRepository):
             args["as_of"] = as_of.isoformat()
         rows = sorted(self._sql(query, **args).collect(), key=lambda r: (r[0], int(r[1])))
         # Ordered by version, so the last row seen for a key is the highest version.
-        return {key: model.from_text(key, text) for key, _version, text in rows}
+        return {key: (int(version), text) for key, version, text in rows}
 
     def load_current(self) -> dict[str, model.Value]:
-        return self._load(None)
+        return {k: model.from_text(k, text) for k, (_v, text) in self._load(None).items()}
 
     def load_as_of(self, as_of: date) -> dict[str, model.Value]:
-        return self._load(as_of)
+        return {k: model.from_text(k, text) for k, (_v, text) in self._load(as_of).items()}
+
+    def versions_as_of(self, as_of: date) -> dict[str, int]:
+        return {k: v for k, (v, _text) in self._load(as_of).items()}
 
     def save(
         self,

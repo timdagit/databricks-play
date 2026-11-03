@@ -16,7 +16,7 @@ from bakehouse_core.simulator.clock import ClockState
 @dataclass(frozen=True)
 class RunLogEntry:
     run_id: str
-    job: str  # "simulator" or "etl"
+    job: str  # "simulator", "load_params", "silver_build" or "gold_build"
     status: str  # "succeeded" or "failed"
     started_at: datetime
     finished_at: datetime
@@ -50,6 +50,10 @@ class OpsStore(ABC):
 
     @abstractmethod
     def log_run(self, entry: RunLogEntry) -> None: ...
+
+    @abstractmethod
+    def find_run(self, run_id: str, job: str) -> RunLogEntry | None:
+        """The latest log entry for `job` in the run `run_id`, if any."""
 
     @abstractmethod
     def log_reset(self, entry: ResetLogEntry) -> None: ...
@@ -89,6 +93,10 @@ class InMemoryOpsStore(OpsStore):
 
     def log_run(self, entry: RunLogEntry) -> None:
         self.run_log.append(entry)
+
+    def find_run(self, run_id: str, job: str) -> RunLogEntry | None:
+        matches = [e for e in self.run_log if e.run_id == run_id and e.job == job]
+        return matches[-1] if matches else None
 
     def log_reset(self, entry: ResetLogEntry) -> None:
         self.reset_log.append(entry)

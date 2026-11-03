@@ -44,6 +44,10 @@ class ParamRepository(ABC):
         """The highest version of every parameter with `effective_from <= as_of`."""
 
     @abstractmethod
+    def versions_as_of(self, as_of: date) -> dict[str, int]:
+        """The version number that `load_as_of(as_of)` picks for every parameter."""
+
+    @abstractmethod
     def save(
         self,
         changes: Mapping[str, object],
@@ -68,24 +72,27 @@ class SqlRepository(ParamRepository):
     def __init__(self, engine: sa.Engine):
         self._engine = engine
 
-    def _load(self, as_of: date | None) -> dict[str, model.Value]:
+    def _load(self, as_of: date | None) -> dict[str, tuple[int, str]]:
         query = sa.select(
             param_versions.c.param_key, param_versions.c.version, param_versions.c.value_text
         ).order_by(param_versions.c.param_key, param_versions.c.version)
         if as_of is not None:
             query = query.where(param_versions.c.effective_from <= as_of)
-        latest: dict[str, model.Value] = {}
+        latest: dict[str, tuple[int, str]] = {}
         with self._engine.connect() as conn:
             # Ordered by version, so the last row seen for a key is the highest version.
-            for key, _version, text in conn.execute(query):
-                latest[key] = model.from_text(key, text)
+            for key, version, text in conn.execute(query):
+                latest[key] = (version, text)
         return latest
 
     def load_current(self) -> dict[str, model.Value]:
-        return self._load(None)
+        return {k: model.from_text(k, text) for k, (_v, text) in self._load(None).items()}
 
     def load_as_of(self, as_of: date) -> dict[str, model.Value]:
-        return self._load(as_of)
+        return {k: model.from_text(k, text) for k, (_v, text) in self._load(as_of).items()}
+
+    def versions_as_of(self, as_of: date) -> dict[str, int]:
+        return {k: v for k, (v, _text) in self._load(as_of).items()}
 
     def save(
         self,

@@ -89,3 +89,9 @@ def test_history_is_oldest_first(repo):
 def test_rejects_unsafe_catalog_name():
     with pytest.raises(ValueError):
         DeltaRepository(FakeSpark(), "x; DROP TABLE y")
+
+
+def test_versions_as_of_match_the_values_picked(repo):
+    repo.save({"underperform_pct": "0.30"}, user="t", effective_from=date(2024, 5, 10))
+    assert repo.versions_as_of(date(2024, 5, 9))["underperform_pct"] == 1
+    assert repo.versions_as_of(date(2024, 5, 10))["underperform_pct"] == 2

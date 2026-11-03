@@ -81,6 +81,28 @@ class SparkOpsStore(OpsStore):
             details=entry.details,
         )
 
+    def find_run(self, run_id: str, job: str) -> RunLogEntry | None:
+        rows = self._sql(
+            "SELECT run_id, job, status, started_at, finished_at, virtual_date, triggered_by, "
+            f"details FROM {self._t('ops', 'run_log')} WHERE run_id = :run_id AND job = :job "
+            "ORDER BY finished_at DESC LIMIT 1",
+            run_id=run_id,
+            job=job,
+        ).collect()
+        if not rows:
+            return None
+        r = rows[0]
+        return RunLogEntry(
+            run_id=r[0],
+            job=r[1],
+            status=r[2],
+            started_at=r[3],
+            finished_at=r[4],
+            virtual_date=r[5],
+            triggered_by=r[6],
+            details=r[7],
+        )
+
     def log_reset(self, entry: ResetLogEntry) -> None:
         self._sql(
             f"INSERT INTO {self._t('ops', 'reset_log')} "

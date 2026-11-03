@@ -11,6 +11,7 @@ dependencies = [
 [project.scripts]
 bakehouse-simulate = "bakehouse_core.jobs.simulate:main"
 bakehouse-reset = "bakehouse_core.jobs.reset:main"
+bakehouse-load-params = "bakehouse_core.jobs.load_params:main"
 
 [dependency-groups]
 dev = [
