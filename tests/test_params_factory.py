@@ -8,6 +8,7 @@ from bakehouse_core.config.identity import (
 )
 from bakehouse_core.jobs.trigger import FakeJobTrigger
 from bakehouse_core.params import factory, model
+from bakehouse_core.params.delta import DeltaRepository
 from bakehouse_core.params.repository import SqlRepository
 from bakehouse_core.params.schema import init_schema
 
@@ -92,9 +93,14 @@ def test_token_provider_is_asked_on_every_connect():
     assert seen == ["first", "second"]
 
 
-def test_delta_is_not_built_yet():
-    with pytest.raises(NotImplementedError):
+def test_delta_needs_spark_and_catalog():
+    with pytest.raises(ValueError, match="spark session and a catalog"):
         factory.get_repository({"PARAM_BACKEND": "delta"})
+
+
+def test_delta_backend_builds_a_delta_repository():
+    repo = factory.get_repository({"PARAM_BACKEND": "delta"}, spark=object(), catalog="c")
+    assert isinstance(repo, DeltaRepository)
 
 
 @pytest.mark.parametrize("value", ["", "mysql"])

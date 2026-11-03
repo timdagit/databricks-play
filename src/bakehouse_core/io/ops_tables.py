@@ -16,7 +16,7 @@ from bakehouse_core.simulator.clock import ClockState
 _IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
-def _ident(name: str) -> str:
+def ident(name: str) -> str:
     if not _IDENTIFIER.match(name):
         raise ValueError(f"not a valid identifier: {name!r}")
     return name
@@ -25,10 +25,10 @@ def _ident(name: str) -> str:
 class SparkOpsStore(OpsStore):
     def __init__(self, spark: Any, catalog: str):
         self._spark = spark
-        self._catalog = _ident(catalog)
+        self._catalog = ident(catalog)
 
     def _t(self, schema: str, table: str) -> str:
-        return f"{self._catalog}.{_ident(schema)}.{_ident(table)}"
+        return f"{self._catalog}.{ident(schema)}.{ident(table)}"
 
     def _sql(self, query: str, **args: Any) -> Any:
         return self._spark.sql(query, args=args) if args else self._spark.sql(query)
@@ -100,7 +100,7 @@ class SparkOpsStore(OpsStore):
     def truncate_tables(self, schemas: list[str]) -> list[str]:
         done = []
         for schema in schemas:
-            for row in self._sql(f"SHOW TABLES IN {self._catalog}.{_ident(schema)}").collect():
+            for row in self._sql(f"SHOW TABLES IN {self._catalog}.{ident(schema)}").collect():
                 name = row["tableName"]
                 self._sql(f"TRUNCATE TABLE {self._t(schema, name)}")
                 done.append(f"{schema}.{name}")

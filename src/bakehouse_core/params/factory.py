@@ -5,17 +5,19 @@
 - `postgres`: `DATABASE_URL`, e.g. the local container.
 - `lakebase`: `PGHOST`, `PGDATABASE`, `PGUSER` (and optionally `PGPORT`), with a token
   provider that supplies a fresh OAuth token for each new connection.
-- `delta`: not built yet.
+- `delta`: Delta tables in `<catalog>.ops`, read with the `spark` session passed in.
 """
 
 from __future__ import annotations
 
 import os
 from collections.abc import Mapping
+from typing import Any
 
 import sqlalchemy as sa
 
 from bakehouse_core.config.identity import TokenProvider
+from bakehouse_core.params.delta import DeltaRepository
 from bakehouse_core.params.repository import ParamRepository, SqlRepository
 
 BACKENDS = ("sqlite", "postgres", "lakebase", "delta")
@@ -30,7 +32,10 @@ def attach_token_auth(engine: sa.Engine, provider: TokenProvider) -> None:
 
 
 def get_repository(
-    env: Mapping[str, str] | None = None, token_provider: TokenProvider | None = None
+    env: Mapping[str, str] | None = None,
+    token_provider: TokenProvider | None = None,
+    spark: Any = None,
+    catalog: str | None = None,
 ) -> ParamRepository:
     """Build the repository named by `PARAM_BACKEND`. Does not create tables."""
     env = os.environ if env is None else env
@@ -60,7 +65,9 @@ def get_repository(
         return SqlRepository(engine)
 
     if backend == "delta":
-        raise NotImplementedError("the delta backend is built in a later workstream")
+        if spark is None or not catalog:
+            raise ValueError("the delta backend needs a spark session and a catalog")
+        return DeltaRepository(spark, catalog)
 
     raise ValueError(f"PARAM_BACKEND must be one of {', '.join(BACKENDS)}, got {backend!r}")
 
