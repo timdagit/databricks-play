@@ -38,3 +38,11 @@ Departures from `SPEC.md` and `CLAUDE_CODE_GUIDE.md`, and choices made along the
 - **Schema names.** `mode: development` prefixes schemas with `dev_<user>_`, giving `bakehouse_dev.dev_<user>_silver` instead of the spec's `bakehouse_dev.silver`. An empty `name_prefix` is ignored, so the `dev` target drops `mode: development`. It sets `presets.trigger_pause_status: PAUSED` by hand to keep schedules paused.
 - **Check when adding resources.** Apps and jobs are no longer auto-prefixed either, so give them explicit names. Other effects of development mode (such as concurrent run limits) are now off unless set.
 - **Volumes** are not prefixed in either case.
+
+## 2026-11-03: first jobs on Databricks
+
+- **Compute.** The `simulator` and `ops_reset` jobs run on serverless jobs compute: an `environments` entry (`environment_version: "5"`, the wheel as the dependency) and `environment_key` on the task, with no cluster defined. A run takes about 80 seconds, mostly startup.
+- **Storage permission.** The first run failed with `Request for user delegation key is not authorized`. The access connector needed the `Storage Blob Delegator` role at storage account scope, because its `Storage Blob Data Contributor` role is scoped to single containers. Fixed in az-inf, written up in `docs/az-inf-requirements.md`.
+- **Proven on Databricks:** wheel install and entry points, loading `samples.bakehouse`, writing JSON files to the `raw` volume with plain file paths, creating the `ops` Delta tables, a multi-day backfill, the `duplicates` scenario (14 repeated IDs on 207 rows) and `ops_reset` with its `confirm` guard.
+- **Not yet proven:** the other four scenarios on Databricks (covered by unit tests only), and the `reset_log` and `run_log` rows. Checking them needs a SQL warehouse or a notebook.
+- **Deferred:** `rebuild=true` on reset, and parameter reseeding on a hard reset (needs the Lakebase and Delta backends).

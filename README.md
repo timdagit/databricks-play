@@ -11,7 +11,7 @@ It exercises Python ETL jobs, Lakeflow Designer, Databricks Apps (a Dash app tha
 
 ## Status
 
-Early: the `bakehouse_core` package skeleton and CI exist. The bundle, ETL and app are not built yet.
+Early. Built and working on Databricks: the `dev` bundle (schemas, volumes), the simulator and the reset job. Built and tested locally: the parameter store (SQLite) and its backend factory. Not built yet: the ETL, the app, Lakebase and Delta parameter backends, Designer and the notebooks.
 
 ## Local development
 
@@ -29,4 +29,29 @@ Tests run without cloud access. Tests that need Spark or Databricks are marked `
 
 ## Variables, deploy and destroy
 
-To be filled in as the bundle is built. Commands use the `personal` Databricks CLI profile (`-p personal`), and no workspace identifiers are stored in the repo.
+Commands use the `personal` Databricks CLI profile (`-p personal`), and no workspace identifiers are stored in the repo.
+
+Variables (defaults are placeholders, override with `--var` or `BUNDLE_VAR_<name>`):
+
+| Variable | Meaning |
+|---|---|
+| `catalog` | Unity Catalog catalog for the target |
+| `idle_stop_minutes` | Idle minutes before anything that bills while running stops |
+| `job_timeout_seconds` | Run timeout for jobs |
+
+```bash
+databricks bundle validate -t dev -p personal
+databricks bundle plan -t dev -p personal
+databricks bundle deploy -t dev -p personal
+
+# Release one virtual day, or several, optionally with scenarios switched on
+databricks bundle run simulator -t dev -p personal
+databricks bundle run simulator -t dev -p personal --params 'days=3,scenarios=duplicates;null_spike'
+
+# Back to virtual day 0 (confirm must equal the target name)
+databricks bundle run ops_reset -t dev -p personal --params level=data,confirm=dev
+```
+
+Scenarios: `late_files`, `duplicates`, `null_spike`, `underperforming_franchise`, `negative_review_burst`.
+
+The jobs run on serverless compute and have no schedule, so nothing runs or costs money until you start it. `databricks bundle destroy -t dev -p personal` removes everything the bundle created.
