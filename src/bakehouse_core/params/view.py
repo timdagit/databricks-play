@@ -108,3 +108,26 @@ def history_rows(repo: ParamRepository, key: str) -> list[dict[str, Any]]:
         }
         for h in reversed(repo.history(key))
     ]
+
+
+def merge_pending(pending: dict | None, effective_from_text: str | None) -> dict:
+    """Remember which days saved changes could affect, until the next rerun.
+
+    `pending` is `None` (nothing saved yet) or `{"from": "YYYY-MM-DD" | None}`, where a missing
+    date means every day. A blank effective-from date means every day. Several saves keep the
+    earliest date, so one rerun covers all of them.
+    """
+    new = parse_effective_from(effective_from_text)
+    if pending is None:
+        return {"from": new.isoformat() if new else None}
+    old = pending.get("from")
+    if old is None or new is None:
+        return {"from": None}
+    return {"from": min(old, new.isoformat())}
+
+
+def rerun_from_date(pending: dict | None) -> date | None:
+    """The first day a rerun has to rebuild, or None for every day (also when unsure)."""
+    if not pending or not pending.get("from"):
+        return None
+    return date.fromisoformat(pending["from"])

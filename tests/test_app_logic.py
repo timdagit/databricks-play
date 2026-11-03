@@ -181,3 +181,34 @@ def test_idle_time_grows_until_touched():
     assert tracker.idle_seconds() == 0
     clock.now = 100
     assert tracker.idle_seconds() == 10
+
+
+def test_rerun_can_be_limited_to_days_from_a_date():
+    trigger = FakeJobTrigger()
+    actions.start_action(trigger, "rerun_etl", "u", from_date=date(2024, 5, 10))
+    assert trigger.calls[0][1] == {
+        "mode": "recompute_gold",
+        "triggered_by": "u",
+        "from_date": "2024-05-10",
+    }
+
+
+def test_from_date_is_only_passed_to_rerun_etl():
+    trigger = FakeJobTrigger()
+    actions.start_action(trigger, "next_day", "u", from_date=date(2024, 5, 10))
+    assert "from_date" not in trigger.calls[0][1]
+
+
+def test_pending_days_merge_rules():
+    assert view.merge_pending(None, "2024-05-10") == {"from": "2024-05-10"}
+    assert view.merge_pending(None, "") == {"from": None}
+    assert view.merge_pending({"from": "2024-05-10"}, "2024-05-12") == {"from": "2024-05-10"}
+    assert view.merge_pending({"from": "2024-05-10"}, "2024-05-03") == {"from": "2024-05-03"}
+    assert view.merge_pending({"from": None}, "2024-05-03") == {"from": None}
+    assert view.merge_pending({"from": "2024-05-10"}, None) == {"from": None}
+
+
+def test_rerun_from_date():
+    assert view.rerun_from_date(None) is None
+    assert view.rerun_from_date({"from": None}) is None
+    assert view.rerun_from_date({"from": "2024-05-10"}) == date(2024, 5, 10)

@@ -73,3 +73,94 @@ class FakeJobTrigger(JobTrigger):
                 if status.state == "RUNNING":
                     return status
         return None
+
+
+_RUNNING_STATES = {"PENDING", "QUEUED", "RUNNING", "TERMINATING", "BLOCKED", "WAITING_FOR_RETRY"}
+_OK_RESULTS = {"SUCCESS", "SUCCESS_WITH_FAILURES"}
+
+
+def run_state(life_cycle_state: str | None, result_state: str | None) -> RunState:
+    """Collapse Databricks' run states into the three the app shows."""
+    if life_cycle_state in _RUNNING_STATES:
+        return "RUNNING"
+    if life_cycle_state == "TERMINATED" and result_state in _OK_RESULTS:
+        return "SUCCEEDED"
+    return "FAILED"  # a failed, cancelled, skipped or errored run
+
+
+def _name(value: object) -> str | None:
+    """The text of an SDK enum (or plain string) value."""
+    if value is None:
+        return None
+    return getattr(value, "value", None) or str(value)
+
+
+class DatabricksJobTrigger(JobTrigger):
+    """Starts and watches real jobs through the Databricks SDK.
+
+    `client` is a `databricks.sdk.WorkspaceClient`. `job_ids` maps the app's job names (see
+    `bakehouse_core.jobs.actions`) to job ids. On Databricks Apps those ids come from the app's
+    job resources, so the app only has permission to run these jobs. The run executes as the
+    job's own identity, not as the app.
+    """
+
+    def __init__(
+        self,
+        client: object,
+        job_ids: Mapping[str, int],
+        now_ms: Callable[[], float] | None = None,
+    ):
+        self._client = client
+        self._job_ids = dict(job_ids)
+        self._now_ms = now_ms or (lambda: time.time() * 1000)
+
+    def _job_id(self, job_name: str) -> int:
+        if job_name not in self._job_ids:
+            raise KeyError(f"no job id configured for {job_name!r}")
+        return self._job_ids[job_name]
+
+    def _to_status(self, run: object, job_name: str) -> RunStatus:
+        state = getattr(run, "state", None)
+        lifecycle = _name(getattr(state, "life_cycle_state", None))
+        result = _name(getattr(state, "result_state", None))
+        started = getattr(run, "start_time", None)
+        if getattr(run, "run_duration", None):  # set once the run has finished (milliseconds)
+            seconds = run.run_duration / 1000
+        elif started:
+            seconds = max(0.0, (self._now_ms() - started) / 1000)
+        else:
+            seconds = 0.0
+        return RunStatus(
+            run_id=str(run.run_id),
+            job_name=job_name,
+            state=run_state(lifecycle, result),
+            duration_seconds=seconds,
+            url=getattr(run, "run_page_url", None),
+        )
+
+    def _job_name(self, job_id: int | None) -> str:
+        for name, known in self._job_ids.items():
+            if known == job_id:
+                return name
+        return str(job_id)
+
+    def trigger(self, job_name: str, params: Mapping[str, str] | None = None) -> str:
+        waiter = self._client.jobs.run_now(
+            job_id=self._job_id(job_name), job_parameters=dict(params or {})
+        )
+        return str(waiter.response.run_id)
+
+    def status(self, run_id: str) -> RunStatus:
+        from databricks.sdk.errors import NotFound
+
+        try:
+            run = self._client.jobs.get_run(run_id=int(run_id))
+        except NotFound:
+            raise UnknownRunError(run_id) from None
+        return self._to_status(run, self._job_name(getattr(run, "job_id", None)))
+
+    def active_run(self, job_name: str) -> RunStatus | None:
+        runs = self._client.jobs.list_runs(job_id=self._job_id(job_name), active_only=True, limit=1)
+        for run in runs:
+            return self._to_status(run, job_name)
+        return None

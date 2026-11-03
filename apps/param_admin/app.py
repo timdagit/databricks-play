@@ -6,7 +6,8 @@ Run locally with `uv run python apps/param_admin/app.py`, or in the container wi
 - `PARAM_BACKEND`: sqlite, postgres or lakebase (see `bakehouse_core.params.factory`). The
   `lakebase` backend also needs `LAKEBASE_ENDPOINT`, the compute's resource name, and the
   `PG*` variables that Databricks Apps sets for its postgres resource.
-- `JOB_TRIGGER`: `fake` (default) simulates runs, `databricks` starts the real jobs
+- `JOB_TRIGGER`: `fake` (default) simulates runs, `databricks` starts the real jobs and needs
+  `ETL_JOB_ID` and `DAILY_RUN_JOB_ID`
 - `APP_USER`: the name recorded in `updated_by` when no user header is present
 - `IDLE_ENABLED`: `true` makes `/idle` report that the idle watchdog is on
 """
@@ -17,7 +18,7 @@ import os
 from pathlib import Path
 
 from bakehouse_core.config.identity import LakebaseTokenProvider
-from bakehouse_core.jobs.trigger import FakeJobTrigger, JobTrigger
+from bakehouse_core.jobs.trigger import DatabricksJobTrigger, FakeJobTrigger, JobTrigger
 from bakehouse_core.params.factory import get_repository
 from bakehouse_core.webapp import create_app
 
@@ -26,7 +27,17 @@ def _trigger() -> JobTrigger:
     kind = os.environ.get("JOB_TRIGGER", "fake").lower()
     if kind == "fake":
         return FakeJobTrigger()
-    raise ValueError(f"JOB_TRIGGER={kind!r} is not available yet (only 'fake')")
+    if kind == "databricks":
+        from databricks.sdk import WorkspaceClient
+
+        # On Databricks Apps the job ids come from the app's job resources. Locally, take them
+        # from `databricks bundle summary`.
+        job_ids = {
+            "bakehouse_etl": int(os.environ["ETL_JOB_ID"]),
+            "daily_run": int(os.environ["DAILY_RUN_JOB_ID"]),
+        }
+        return DatabricksJobTrigger(WorkspaceClient(), job_ids)
+    raise ValueError(f"JOB_TRIGGER={kind!r} is not known (use 'fake' or 'databricks')")
 
 
 def _token_provider(backend: str):

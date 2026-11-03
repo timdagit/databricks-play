@@ -89,17 +89,17 @@ def test_history_for_the_selected_row(handlers, parts):
 
 
 def test_run_buttons_start_a_job_and_block_a_second(handlers, parts):
-    result, tracked = handlers.run("rerun_etl", "tim@example.com")
+    result, tracked, _ = handlers.run("rerun_etl", "tim@example.com")
     assert result.started
     assert tracked == {"run_id": "fake-run-1", "label": "Rerun ETL"}
-    second, tracked2 = handlers.run("next_day", "tim@example.com")
+    second, tracked2, _ = handlers.run("next_day", "tim@example.com")
     assert not second.started
     assert tracked2 is None
 
 
 def test_poll_reports_progress_and_disables_buttons_while_running(handlers, parts):
     clock = parts[3]
-    _, tracked = handlers.run("next_day", "tim")
+    _, tracked, _ = handlers.run("next_day", "tim")
     clock.now = 4
     running = handlers.poll(tracked)
     assert running.buttons_disabled
@@ -177,3 +177,45 @@ def test_poll_copes_with_a_run_the_server_no_longer_knows(handlers):
     poll = handlers.poll(stale)
     assert poll.text == "Run next day: no longer known to the server"
     assert not poll.buttons_disabled
+
+
+def save(handlers, rows, key, value, effective_from, pending):
+    return handlers.table_action(
+        "save", edited(rows, key, value), rows, effective_from, None, "tim", pending
+    )
+
+
+def test_saves_remember_which_days_a_rerun_must_cover(handlers):
+    rows = handlers.table_action(None, None, None, None, None, "tim").rows
+    first = save(handlers, rows, "underperform_pct", "0.30", "2024-05-10", None)
+    assert first.pending == {"from": "2024-05-10"}
+    later = save(handlers, first.rows, "review_alert_min_count", "5", "2024-05-12", first.pending)
+    assert later.pending == {"from": "2024-05-10"}  # the earliest date wins
+    earlier = save(handlers, later.rows, "promo_discount_rate", "0.2", "2024-05-02", later.pending)
+    assert earlier.pending == {"from": "2024-05-02"}
+    everything = save(handlers, earlier.rows, "dq_max_null_pct", "0.05", "", earlier.pending)
+    assert everything.pending == {"from": None}  # a blank date means every day
+
+
+def test_a_failed_save_leaves_the_pending_days_alone(handlers):
+    rows = handlers.table_action(None, None, None, None, None, "tim").rows
+    bad = save(handlers, rows, "underperform_pct", "0.9", "2024-05-10", {"from": "2024-05-20"})
+    assert bad.ok is False
+    assert bad.pending == {"from": "2024-05-20"}
+
+
+def test_rerun_covers_only_the_pending_days_and_clears_them(handlers, parts):
+    result, _, pending = handlers.run("rerun_etl", "tim", {"from": "2024-05-10"})
+    assert result.started
+    assert parts[1].calls[0][1]["from_date"] == "2024-05-10"
+    assert pending is None
+
+
+def test_rerun_with_nothing_pending_rebuilds_everything(handlers, parts):
+    handlers.run("rerun_etl", "tim", None)
+    assert "from_date" not in parts[1].calls[0][1]
+
+
+def test_next_day_keeps_the_pending_days(handlers):
+    _, _, pending = handlers.run("next_day", "tim", {"from": "2024-05-10"})
+    assert pending == {"from": "2024-05-10"}

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 
 from bakehouse_core.jobs.trigger import JobTrigger, RunStatus
 
@@ -39,8 +40,13 @@ def any_active(trigger: JobTrigger) -> RunStatus | None:
     return None
 
 
-def start_action(trigger: JobTrigger, action_key: str, user: str) -> StartResult:
-    """Start the action's job unless one is already running. `user` goes to `triggered_by`."""
+def start_action(
+    trigger: JobTrigger, action_key: str, user: str, from_date: date | None = None
+) -> StartResult:
+    """Start the action's job unless one is already running. `user` goes to `triggered_by`.
+
+    `from_date` limits Rerun ETL to the days from a changed parameter's effective date.
+    """
     action = ACTIONS.get(action_key)
     if action is None:
         raise ValueError(f"unknown action: {action_key}")
@@ -49,7 +55,10 @@ def start_action(trigger: JobTrigger, action_key: str, user: str) -> StartResult
         return StartResult(
             False, f"A run of {active.job_name} is already in progress.", None, active
         )
-    run_id = trigger.trigger(action.job_name, {**action.params, "triggered_by": user})
+    params = {**action.params, "triggered_by": user}
+    if from_date is not None and action_key == "rerun_etl":
+        params["from_date"] = from_date.isoformat()
+    run_id = trigger.trigger(action.job_name, params)
     return StartResult(True, f"Started {action.label}.", run_id)
 
 

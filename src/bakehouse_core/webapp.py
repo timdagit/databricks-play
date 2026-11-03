@@ -50,6 +50,7 @@ class TableUpdate:
     message: str
     errors: dict[str, str] = field(default_factory=dict)
     ok: bool | None = None  # None: just loaded
+    pending: dict | None = None  # days the saves since the last rerun could affect
 
 
 @dataclass(frozen=True)
@@ -72,21 +73,27 @@ class Handlers:
         effective_from: str | None,
         note: str | None,
         user: str,
+        pending: dict | None = None,
     ) -> TableUpdate:
         """Load or reload (`which` is None or `reload`), or save the edits (`save`)."""
         if which != "save" or not edited or original is None:
             if which is not None:
                 self.tracker.touch()
             rows = view.build_rows(self.repo)
-            return TableUpdate(rows, rows, "Loaded the current values." if which else "")
+            return TableUpdate(
+                rows, rows, "Loaded the current values." if which else "", pending=pending
+            )
         self.tracker.touch()
         result = view.save_changes(
             self.repo, view.changed_values(original, edited), user, note or "", effective_from
         )
         if result.ok:
             rows = view.build_rows(self.repo)
-            return TableUpdate(rows, rows, result.message, ok=True)
-        return TableUpdate(edited, original, result.message, result.errors, ok=False)
+            merged = view.merge_pending(pending, effective_from)
+            return TableUpdate(rows, rows, result.message, ok=True, pending=merged)
+        return TableUpdate(
+            edited, original, result.message, result.errors, ok=False, pending=pending
+        )
 
     def history(self, rows: list[dict[str, Any]] | None, selected: list[int] | None):
         if not rows or not selected:
@@ -95,14 +102,20 @@ class Handlers:
         key = rows[selected[0]]["key"]
         return f"Versions of {key}", view.history_rows(self.repo, key)
 
-    def run(self, action_key: str, user: str) -> tuple[actions.StartResult, dict | None]:
-        """Start a run. The second value is what to remember about it for the status line."""
+    def run(
+        self, action_key: str, user: str, pending: dict | None = None
+    ) -> tuple[actions.StartResult, dict | None, dict | None]:
+        """Start a run. Returns the result, what to remember for the status line, and the
+        pending-days note afterwards (cleared once a rerun has started)."""
         self.tracker.touch()
-        result = actions.start_action(self.trigger, action_key, user)
+        from_date = view.rerun_from_date(pending) if action_key == "rerun_etl" else None
+        result = actions.start_action(self.trigger, action_key, user, from_date)
         tracked = None
         if result.started and result.run_id:
             tracked = {"run_id": result.run_id, "label": actions.ACTIONS[action_key].label}
-        return result, tracked
+            if action_key == "rerun_etl":
+                pending = None
+        return result, tracked, pending
 
     def poll(self, tracked: dict | None) -> Poll:
         """Status for the page. Never touches the idle tracker: polling is not activity."""
@@ -201,6 +214,7 @@ def create_app(
             html.Div(id="run-message"),
             html.Div(id="run-status", className="muted"),
             dcc.Store(id="original"),
+            dcc.Store(id="pending"),
             dcc.Store(id="tracked-run"),
             dcc.Interval(id="poll", interval=POLL_MILLISECONDS),
         ],
@@ -211,18 +225,22 @@ def create_app(
         Output("params", "tooltip_data"),
         Output("original", "data"),
         Output("message", "children"),
+        Output("pending", "data"),
         Input("save", "n_clicks"),
         Input("reload", "n_clicks"),
         State("params", "data"),
         State("original", "data"),
         State("effective-from", "value"),
         State("note", "value"),
+        State("pending", "data"),
     )
-    def on_table(_save, _reload, edited, original, effective_from, note):
+    def on_table(_save, _reload, edited, original, effective_from, note, pending):
         which = {"save": "save", "reload": "reload"}.get(ctx.triggered_id)
-        update = handlers.table_action(which, edited, original, effective_from, note, user_of())
+        update = handlers.table_action(
+            which, edited, original, effective_from, note, user_of(), pending
+        )
         tooltips = [{"key": {"value": row["description"], "type": "text"}} for row in update.rows]
-        return update.rows, tooltips, update.original, _message(update)
+        return update.rows, tooltips, update.original, _message(update), update.pending
 
     @app.callback(
         Output("history-title", "children"),
@@ -237,16 +255,18 @@ def create_app(
     @app.callback(
         Output("run-message", "children"),
         Output("tracked-run", "data"),
+        Output("pending", "data", allow_duplicate=True),
         Input("rerun_etl", "n_clicks"),
         Input("next_day", "n_clicks"),
+        State("pending", "data"),
         prevent_initial_call=True,
     )
-    def on_run(_rerun, _next):
+    def on_run(_rerun, _next, pending):
         if ctx.triggered_id not in actions.ACTIONS:
-            return [], None
-        result, tracked = handlers.run(ctx.triggered_id, user_of())
+            return [], None, pending
+        result, tracked, pending = handlers.run(ctx.triggered_id, user_of(), pending)
         cls = "ok" if result.started else "error"
-        return html.Div(result.message, className=cls), tracked
+        return html.Div(result.message, className=cls), tracked, pending
 
     @app.callback(
         Output("run-status", "children"),
