@@ -103,6 +103,14 @@ class SparkOpsStore(OpsStore):
             details=r[7],
         )
 
+    def last_success_date(self, job: str) -> date | None:
+        rows = self._sql(
+            f"SELECT MAX(virtual_date) FROM {self._t('ops', 'run_log')} "
+            "WHERE job = :job AND status = 'succeeded'",
+            job=job,
+        ).collect()
+        return rows[0][0] if rows else None
+
     def log_reset(self, entry: ResetLogEntry) -> None:
         self._sql(
             f"INSERT INTO {self._t('ops', 'reset_log')} "

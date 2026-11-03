@@ -56,6 +56,10 @@ class OpsStore(ABC):
         """The latest log entry for `job` in the run `run_id`, if any."""
 
     @abstractmethod
+    def last_success_date(self, job: str) -> date | None:
+        """The latest virtual date of a succeeded run of `job`, or None if it never succeeded."""
+
+    @abstractmethod
     def log_reset(self, entry: ResetLogEntry) -> None: ...
 
     @abstractmethod
@@ -97,6 +101,14 @@ class InMemoryOpsStore(OpsStore):
     def find_run(self, run_id: str, job: str) -> RunLogEntry | None:
         matches = [e for e in self.run_log if e.run_id == run_id and e.job == job]
         return matches[-1] if matches else None
+
+    def last_success_date(self, job: str) -> date | None:
+        dates = [
+            e.virtual_date
+            for e in self.run_log
+            if e.job == job and e.status == "succeeded" and e.virtual_date
+        ]
+        return max(dates, default=None)
 
     def log_reset(self, entry: ResetLogEntry) -> None:
         self.reset_log.append(entry)
