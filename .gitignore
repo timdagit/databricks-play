@@ -2,6 +2,8 @@
 .databricks/
 .databrickscfg
 databricks.local.yml
+# Output of `databricks bundle schema`, regenerate when needed
+databricks-bundle-schema.json
 *.tfstate*
 
 # Secrets and env
