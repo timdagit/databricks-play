@@ -19,7 +19,7 @@ bakehouse-gold-build = "bakehouse_core.jobs.gold_build:main"
 # The Dash app. A group, not a dependency, so the wheel the jobs install on serverless
 # stays small. `uv sync` installs it by default (see `default-groups` below).
 app = [
-    "dash>=4.5.0",
+    "dash>=4.5,<5",  # DataTable is deprecated and goes in a later major version
     "gunicorn>=26.2.0",
     "psycopg[binary]>=3.3.7",
 ]

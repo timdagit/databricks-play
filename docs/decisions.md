@@ -85,3 +85,8 @@ Departures from `SPEC.md` and `CLAUDE_CODE_GUIDE.md`, and choices made along the
 - **Gold tables evolve.** `GoldTables.ensure_tables` adds columns that a table lacks, so adding a column no longer needs a manual drop. New columns are null on old rows until `recompute_gold` runs. Removing or renaming a column still needs a deliberate drop and rebuild, and the job says so.
 - **Calibration result (day 19).** The network's 7-day change was -12%. Flagged franchises at `underperform_pct` 0.20, 0.30, 0.40 and 0.50: 3, 2, 1 and 0 (down from 25 with the old rule). The default stays 0.20, which is what is stored. Raising it in the app and rerunning the ETL narrows the flags, which makes a good parameter demo.
 - Also removed the no-partition window from the supplier shares by computing the total once.
+
+## 2026-11-03: the parameter table component
+
+- **Finding.** Dash 4.5 marks `dash_table.DataTable` as deprecated: it still works, will leave the built-in components in a future major version, and `dash-ag-grid` is the suggested replacement.
+- **Decision.** Keep `DataTable` for now and cap Dash at `<5` in the `app` dependency group, so an upgrade cannot remove it by accident. The handlers (`bakehouse_core.webapp.Handlers`) work on plain rows, so switching to `dash-ag-grid` later only touches the layout and callback wiring in `create_app`. Revisit if Dash 5 is wanted, or once the app has been proven on Databricks (workstream 8).
