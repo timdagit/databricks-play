@@ -54,6 +54,8 @@ def main(argv: list[str] | None = None) -> None:
     """Entry point for the wheel task (`bakehouse-load-params`)."""
     parser = argparse.ArgumentParser(description="Record the parameters for this ETL run.")
     parser.add_argument("--catalog", required=True)
+    parser.add_argument("--param-backend", default="delta", choices=["delta", "lakebase"])
+    parser.add_argument("--params-catalog", default="")
     parser.add_argument("--run-id", default="")
     parser.add_argument("--triggered-by", default="manual")
     args = parser.parse_args(argv)
@@ -61,11 +63,11 @@ def main(argv: list[str] | None = None) -> None:
     from pyspark.sql import SparkSession
 
     from bakehouse_core.io.ops_tables import SparkOpsStore
-    from bakehouse_core.params.delta import DeltaRepository
+    from bakehouse_core.params.factory import spark_repository
 
     spark = SparkSession.builder.getOrCreate()
-    repo = DeltaRepository(spark, args.catalog)
-    repo.ensure_tables()
+    repo = spark_repository(spark, args.param_backend, args.catalog, args.params_catalog)
+    repo.ensure_schema()
     entry = run_load_params(
         SparkOpsStore(spark, args.catalog),
         repo,

@@ -17,7 +17,7 @@ from typing import Any
 import sqlalchemy as sa
 
 from bakehouse_core.config.identity import TokenProvider
-from bakehouse_core.params.delta import DeltaRepository
+from bakehouse_core.params.delta import CatalogReadRepository, DeltaRepository
 from bakehouse_core.params.repository import ParamRepository, SqlRepository
 
 BACKENDS = ("sqlite", "postgres", "lakebase", "delta")
@@ -86,3 +86,20 @@ def _require(env: Mapping[str, str], name: str, backend: str) -> str:
     if not value:
         raise ValueError(f"{name} is required for PARAM_BACKEND={backend}")
     return value
+
+
+def spark_repository(
+    spark: Any, backend: str, catalog: str, params_catalog: str | None = None
+) -> ParamRepository:
+    """The parameter store a Spark job reads: Delta tables in `ops`, or the Lakebase catalog.
+
+    `catalog` is the target's data catalog. `params_catalog` is the catalog Lakebase is
+    registered as, needed for the `lakebase` backend.
+    """
+    if backend == "delta":
+        return DeltaRepository(spark, catalog)
+    if backend == "lakebase":
+        if not params_catalog:
+            raise ValueError("the lakebase backend needs the catalog Lakebase is registered as")
+        return CatalogReadRepository(spark, params_catalog)
+    raise ValueError(f"jobs read parameters from 'delta' or 'lakebase', got {backend!r}")

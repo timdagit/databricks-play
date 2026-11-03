@@ -30,12 +30,13 @@ def _as_datetime(value: Any) -> datetime:
 
 
 class DeltaRepository(ParamRepository):
-    def __init__(self, spark: Any, catalog: str):
+    def __init__(self, spark: Any, catalog: str, schema: str = "ops"):
         self._spark = spark
         self._catalog = ident(catalog)
+        self._schema = ident(schema)
 
     def _t(self, table: str) -> str:
-        return f"{self._catalog}.ops.{ident(table)}"
+        return f"{self._catalog}.{self._schema}.{ident(table)}"
 
     def _sql(self, query: str, **args: Any) -> Any:
         return self._spark.sql(query, args=args) if args else self._spark.sql(query)
@@ -177,3 +178,23 @@ class DeltaRepository(ParamRepository):
             )
             for r in sorted(rows, key=lambda r: int(r[1]))
         ]
+
+
+class CatalogReadRepository(DeltaRepository):
+    """Read-only access to the parameters held in Lakebase, through its Unity Catalog catalog.
+
+    The ETL reads them with Spark SQL, as spec section 4.5 describes. Only the app writes to
+    Lakebase, and it creates the tables, so setting up and saving are refused here.
+    """
+
+    def __init__(self, spark: Any, catalog: str, schema: str = "public"):
+        super().__init__(spark, catalog, schema)
+
+    def ensure_schema(self) -> None:
+        """Nothing to create: the app owns the tables."""
+
+    def ensure_tables(self) -> None:
+        """Nothing to create: the app owns the tables."""
+
+    def save(self, *args: Any, **kwargs: Any) -> dict[str, int]:
+        raise PermissionError("the Lakebase catalog is read-only here; save through the app")

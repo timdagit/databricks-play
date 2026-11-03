@@ -22,6 +22,9 @@ variables:
   job_timeout_seconds:
     description: Run timeout for jobs. Only catches runaways, since a job has no idle state.
     default: 900
+  param_backend:
+    description: Where the ETL reads parameters from, `delta` (ops tables) or `lakebase` (its catalog).
+    default: delta
   job_duration_warning_seconds:
     description: A run longer than this raises a health warning, well before the timeout.
     default: 600

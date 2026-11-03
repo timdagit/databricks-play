@@ -12,7 +12,7 @@ from decimal import Decimal
 import pytest
 
 from bakehouse_core.params import model
-from bakehouse_core.params.delta import DeltaRepository
+from bakehouse_core.params.delta import CatalogReadRepository, DeltaRepository
 from bakehouse_core.params.repository import ParamValidationError
 
 
@@ -30,7 +30,7 @@ class FakeSpark:
 
     def sql(self, query, args=None):
         # `cat.ops.table` becomes `ops_table`, and `:name` markers are bound by sqlite.
-        query = re.sub(r"\b\w+\.ops\.(\w+)", r"ops_\1", query)
+        query = re.sub(r"\b\w+\.(?:ops|public)\.(\w+)", r"ops_\1", query)
         # sqlite would turn a cast to DATE or TIMESTAMP into a number, so keep the text.
         query = re.sub(r"CAST\((:\w+) AS (?:DATE|TIMESTAMP)\)", r"\1", query)
         query = query.replace(" STRING", " TEXT")  # sqlite gives STRING numeric affinity
@@ -101,3 +101,21 @@ def test_ensure_schema_is_ensure_tables():
     repo = DeltaRepository(FakeSpark(), "cat")
     repo.ensure_schema()
     assert repo.load_current() == model.defaults()
+
+
+def test_catalog_read_repository_reads_what_the_app_saved(repo):
+    repo.save({"underperform_pct": "0.30"}, user="t", effective_from=date(2024, 5, 10))
+    reader = CatalogReadRepository(repo._spark, "params_cat")
+    assert reader.load_as_of(date(2024, 5, 9))["underperform_pct"] == Decimal("0.20")
+    assert reader.load_as_of(date(2024, 5, 10))["underperform_pct"] == Decimal("0.30")
+    assert reader.versions_as_of(date(2024, 5, 10))["underperform_pct"] == 2
+
+
+def test_catalog_read_repository_is_read_only_and_creates_nothing():
+    spark = FakeSpark()
+    reader = CatalogReadRepository(spark, "params_cat")
+    reader.ensure_schema()
+    reader.ensure_tables()
+    assert spark.sql("SELECT name FROM sqlite_master").collect() == []
+    with pytest.raises(PermissionError, match="read-only"):
+        reader.save({"underperform_pct": "0.30"}, user="t")

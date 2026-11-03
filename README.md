@@ -54,6 +54,7 @@ Variables (defaults are placeholders, override with `--var` or `BUNDLE_VAR_<name
 | `catalog` | Unity Catalog catalog for the target |
 | `idle_stop_minutes` | Idle minutes before anything that bills while running stops |
 | `job_timeout_seconds` | Run timeout for jobs |
+| `param_backend` | Where the ETL reads parameters: `delta` or `lakebase` |
 | `job_duration_warning_seconds` | A run longer than this raises a health warning |
 
 ```bash

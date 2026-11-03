@@ -137,6 +137,8 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Build the gold tables.")
     parser.add_argument("--catalog", required=True)
     parser.add_argument("--mode", default="incremental", choices=MODES)
+    parser.add_argument("--param-backend", default="delta", choices=["delta", "lakebase"])
+    parser.add_argument("--params-catalog", default="")
     parser.add_argument("--run-id", default="")
     parser.add_argument("--triggered-by", default="manual")
     args = parser.parse_args(argv)
@@ -144,13 +146,13 @@ def main(argv: list[str] | None = None) -> None:
     from pyspark.sql import SparkSession
 
     from bakehouse_core.io.ops_tables import SparkOpsStore
-    from bakehouse_core.params.delta import DeltaRepository
+    from bakehouse_core.params.factory import spark_repository
 
     spark = SparkSession.builder.getOrCreate()
     details = run_gold_build(
         spark,
         SparkOpsStore(spark, args.catalog),
-        DeltaRepository(spark, args.catalog),
+        spark_repository(spark, args.param_backend, args.catalog, args.params_catalog),
         args.catalog,
         mode=args.mode,
         run_id=args.run_id or None,

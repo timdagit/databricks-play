@@ -33,6 +33,10 @@ resources:
             parameters:
               - --catalog
               - ${var.catalog}
+              - --param-backend
+              - ${var.param_backend}
+              - --params-catalog
+              - ${resources.postgres_catalogs.params_catalog.catalog_id}
               - --run-id
               - "{{job.run_id}}"
               - --triggered-by
@@ -61,6 +65,10 @@ resources:
             parameters:
               - --catalog
               - ${var.catalog}
+              - --param-backend
+              - ${var.param_backend}
+              - --params-catalog
+              - ${resources.postgres_catalogs.params_catalog.catalog_id}
               - --mode
               - "{{job.parameters.mode}}"
               - --run-id

@@ -8,7 +8,7 @@ from bakehouse_core.config.identity import (
 )
 from bakehouse_core.jobs.trigger import FakeJobTrigger
 from bakehouse_core.params import factory, model
-from bakehouse_core.params.delta import DeltaRepository
+from bakehouse_core.params.delta import CatalogReadRepository, DeltaRepository
 from bakehouse_core.params.repository import SqlRepository
 from bakehouse_core.params.schema import init_schema
 
@@ -144,3 +144,16 @@ def test_in_memory_sqlite_is_shared_between_threads():
     thread.start()
     thread.join()
     assert seen["values"] == model.defaults()
+
+
+def test_jobs_pick_delta_or_the_lakebase_catalog():
+    assert isinstance(factory.spark_repository(object(), "delta", "c"), DeltaRepository)
+    lakebase = factory.spark_repository(object(), "lakebase", "c", "params_c")
+    assert isinstance(lakebase, CatalogReadRepository)
+
+
+def test_lakebase_for_jobs_needs_its_catalog_and_other_names_are_rejected():
+    with pytest.raises(ValueError, match="registered as"):
+        factory.spark_repository(object(), "lakebase", "c")
+    with pytest.raises(ValueError, match="'delta' or 'lakebase'"):
+        factory.spark_repository(object(), "sqlite", "c")
