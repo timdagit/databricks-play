@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "Reusable logic for the Bakehouse Databricks PoC: parameters, simulator, transforms and data quality."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "sqlalchemy>=2.1.6",
+]
 
 [dependency-groups]
 dev = [
