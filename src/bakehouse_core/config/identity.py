@@ -11,7 +11,7 @@ from collections.abc import Callable, Mapping
 from datetime import UTC, datetime, timedelta
 from typing import Protocol
 
-# Header Databricks Apps sets to the signed-in user. Confirm when the app is deployed.
+# Header Databricks Apps sets to the signed-in user (confirmed on the deployed app).
 FORWARDED_EMAIL_HEADER = "X-Forwarded-Email"
 
 

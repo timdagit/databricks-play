@@ -116,3 +116,8 @@ Departures from `SPEC.md` and `CLAUDE_CODE_GUIDE.md`, and choices made along the
 
 - **Finding.** A save with a blank effective-from date used the real date (2026-11-03). The ETL reads parameters as of the virtual date (May 2024 and on), so such a change was stored but never in force. The app cannot see the virtual date, because the clock is in Delta.
 - **Change.** In the app, a blank date means "from the start" (the seed date, 1900-01-01), shown as `from the start`. An explicit date still limits the change to days from then on. `incremental` applies the new values to new days, and `recompute_gold` rebuilds every day with them. The repository's own default (today) is unchanged for other callers.
+
+## 2026-11-03: the app on Databricks works end to end
+
+- **Proven:** the app starts on Databricks Apps, creates the `params` schema and the seed in Lakebase, and saves versions there. The signed-in user's email arrives in `X-Forwarded-Email` and is recorded as `updated_by`. Spark reads the same table through the Unity Catalog registration (`<params catalog>.params.param_versions`).
+- **Note:** decimal values are stored without trailing zeros (`0.3`), which parses back to the same number.
