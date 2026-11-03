@@ -87,7 +87,9 @@ resources:
           default: "1"
         - name: scenarios
           default: ""
-        - name: mode
+        # Not named `mode`: a parent's job parameters are pushed down to the jobs it starts by
+        # name, and the simulator already has a `mode` parameter with different values.
+        - name: etl_mode
           default: incremental
         - name: triggered_by
           default: manual
@@ -105,5 +107,5 @@ resources:
           run_job_task:
             job_id: ${resources.jobs.bakehouse_etl.id}
             job_parameters:
-              mode: "{{job.parameters.mode}}"
+              mode: "{{job.parameters.etl_mode}}"
               triggered_by: "{{job.parameters.triggered_by}}"
