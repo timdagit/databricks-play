@@ -200,7 +200,7 @@ Cross-field rules, such as silver below gold, are validated in `bakehouse_core.p
 ### 4.4 Dash app (`apps/param_admin`)
 
 - Loads all parameters at startup into an editable table showing the value, the range and the effective-from date.
-- Validates changes before saving. Each save inserts a new version. A history panel shows each parameter's versions.
+- Validates changes before saving. Each save inserts a new version. A blank effective-from date means "from the start" (every virtual day), because the ETL reads parameters as of the virtual date and a real "today" would never be in force. A history panel shows each parameter's versions.
 - `app.yaml` command: `gunicorn app:server`. Locally the same `app.py` runs in Docker.
 - **Identity:** the app's own service principal, created automatically by Databricks Apps. Users sign in with workspace SSO, and `updated_by` is taken from the forwarded user header.
 - **App resources** (in the bundle):

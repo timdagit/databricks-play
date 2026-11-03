@@ -175,7 +175,7 @@ def create_app(
                     dcc.Input(
                         id="effective-from",
                         type="text",
-                        placeholder="Effective from (YYYY-MM-DD, blank = today)",
+                        placeholder="Effective from (YYYY-MM-DD, blank = from the start)",
                         debounce=True,
                     ),
                     dcc.Input(id="note", type="text", placeholder="Note", debounce=True),

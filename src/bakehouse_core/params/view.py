@@ -11,6 +11,14 @@ from typing import Any
 
 from bakehouse_core.params import model
 from bakehouse_core.params.repository import ParamRepository, ParamValidationError
+from bakehouse_core.params.schema import SEED_EFFECTIVE_FROM
+
+FROM_THE_START = "from the start"
+
+
+def display_date(value: date) -> str:
+    """The seed date reads as "from the start". Real dates are shown as they are."""
+    return FROM_THE_START if value == SEED_EFFECTIVE_FROM else value.isoformat()
 
 
 def build_rows(repo: ParamRepository) -> list[dict[str, Any]]:
@@ -24,7 +32,7 @@ def build_rows(repo: ParamRepository) -> list[dict[str, Any]]:
                 "value": model.to_text(latest.value),
                 "range": f"{model.to_text(d.min_value)} to {model.to_text(d.max_value)}",
                 "unit": d.unit,
-                "effective_from": latest.effective_from.isoformat(),
+                "effective_from": display_date(latest.effective_from),
                 "version": latest.version,
                 "updated_by": latest.updated_by,
                 "description": d.description,
@@ -45,7 +53,7 @@ def changed_values(original: list[dict[str, Any]], edited: list[dict[str, Any]])
 
 
 def parse_effective_from(text: str | None) -> date | None:
-    """A date typed as YYYY-MM-DD. Empty means today (None)."""
+    """A date typed as YYYY-MM-DD, or None if left blank."""
     text = (text or "").strip()
     if not text:
         return None
@@ -76,6 +84,9 @@ def save_changes(
         effective_from = parse_effective_from(effective_from_text)
     except ValueError as exc:
         return SaveResult(False, "Fix the effective-from date.", {"effective_from": str(exc)}, {})
+    # Blank means every day. The ETL reads parameters as of the virtual date, which the app
+    # cannot see, and a real "today" is meaningless in simulated time.
+    effective_from = effective_from or SEED_EFFECTIVE_FROM
     try:
         versions = repo.save(changes, user=user, note=note, effective_from=effective_from)
     except ParamValidationError as exc:
@@ -90,7 +101,7 @@ def history_rows(repo: ParamRepository, key: str) -> list[dict[str, Any]]:
         {
             "version": h.version,
             "value": model.to_text(h.value),
-            "effective_from": h.effective_from.isoformat(),
+            "effective_from": display_date(h.effective_from),
             "updated_by": h.updated_by,
             "updated_at": h.updated_at.strftime("%Y-%m-%d %H:%M"),
             "note": h.change_note,

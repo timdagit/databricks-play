@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 
 import pytest
 import sqlalchemy as sa
@@ -79,7 +80,24 @@ def test_bad_effective_date_is_reported_against_the_date_field(repo):
     assert repo.load_current() == model.defaults()
 
 
-def test_empty_effective_date_means_today(repo):
+def test_blank_effective_date_in_a_save_means_from_the_start(repo):
+    result = view.save_changes(repo, {"underperform_pct": "0.30"}, "tim")
+    assert result.ok
+    saved = repo.history("underperform_pct")[-1]
+    assert saved.effective_from == date(1900, 1, 1)
+    # Whatever virtual day the ETL asks about, the saved value is in force.
+    assert repo.load_as_of(date(2024, 5, 1))["underperform_pct"] == Decimal("0.30")
+
+
+def test_the_seed_date_is_shown_as_from_the_start(repo):
+    rows = view.build_rows(repo)
+    assert {r["effective_from"] for r in rows} == {"from the start"}
+    assert view.history_rows(repo, "underperform_pct")[0]["effective_from"] == "from the start"
+    repo.save({"underperform_pct": "0.30"}, user="tim", effective_from=date(2024, 5, 10))
+    assert view.history_rows(repo, "underperform_pct")[0]["effective_from"] == "2024-05-10"
+
+
+def test_empty_effective_date_parses_to_none(repo):
     assert view.parse_effective_from("") is None
     assert view.parse_effective_from(None) is None
     assert view.parse_effective_from(" 2024-05-10 ") == date(2024, 5, 10)
