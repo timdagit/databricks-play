@@ -56,7 +56,7 @@ class FakeTables:
 
 
 def raw(spark, columns, rows, day):
-    df = spark.createDataFrame(rows, columns)
+    df = spark.createDataFrame(rows, ", ".join(f"{c} string" for c in columns))
     path = f"/v/x/date={day}/f.json"
     return (
         df.withColumn("_source_file", F.lit(path))
