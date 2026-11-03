@@ -23,3 +23,12 @@ Departures from `SPEC.md` and `CLAUDE_CODE_GUIDE.md`, and choices made along the
 - **No all-purpose cluster exists.** The spec assumed one. Nothing to note about auto-termination, and the guardrail about not using it is moot. az-inf only defines cluster policies.
 - **Resource group `az_databricks`** is in northeurope and has only a `created_by` tag. The spec's project and owner tags are not applied yet (deferred, see `az-inf-requirements.md`).
 - **No gitignored config yet.** Locally the `personal` profile supplies the host. CI will use GitHub Environment secrets. Add `.env.local` only when something needs it.
+- **Git hooks.** Local commits run only the global gitleaks hook (`core.hooksPath` in the user config points to `~/.git-hooks`). No pre-commit framework: ruff runs in CI and by hand (`uv run ruff check .`, `uv run ruff format .`).
+
+## 2026-11-03: bundle schema findings (CLI 1.23.0)
+
+- **Usage policy fields.** Jobs and apps have both `budget_policy_id` and `usage_policy_id`. Lakebase projects (`postgres_projects`) only have `budget_policy_id`. Check which the workspace accepts when we get to tagging.
+- **Lakebase.** `postgres_projects` has `custom_tags`, `default_endpoint_settings`, `history_retention_duration`, `pg_version` and `purge_on_delete`. `postgres_catalogs`, `postgres_roles`, `postgres_branches` and `postgres_endpoints` also exist.
+- **Presets.** `name_prefix`, `tags`, `trigger_pause_status` and `jobs_max_concurrent_runs` exist, so schedules can be paused and tags set at bundle level.
+- **Workspace.** `workspace.artifact_path` exists, so the wheel can be uploaded to a volume path (to verify when deploying).
+- **Warehouse.** `sql_warehouses` has `auto_stop_mins` and `tags`, so the 1-minute idle default is expressible.
