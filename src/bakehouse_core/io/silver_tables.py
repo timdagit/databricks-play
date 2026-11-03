@@ -135,6 +135,10 @@ class SilverTables:
     def name(self, table: str) -> str:
         return f"{self._catalog}.silver.{ident(table)}"
 
+    def current(self, spec: TableSpec) -> Any:
+        """The table's rows as a DataFrame."""
+        return self._spark.table(self.name(spec.table))
+
     def ensure_tables(self) -> None:
         for spec in SPECS.values():
             self._spark.sql(create_table_sql(self.name(spec.table), spec.columns))
