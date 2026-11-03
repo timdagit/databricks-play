@@ -11,7 +11,7 @@ It exercises Python ETL jobs, Lakeflow Designer, Databricks Apps (a Dash app tha
 
 ## Status
 
-Early. Built and working on Databricks: the `dev` bundle (schemas, volumes), the simulator and the reset job. Built and tested locally, not yet run on Databricks: the ETL (parameters, silver, gold) and the Delta parameter store. Built and tested locally: the SQLite parameter store and its backend factory. Not built yet: the app, the Lakebase parameter backend, Designer and the notebooks.
+Early. Built and working on Databricks: the `dev` bundle (schemas, volumes), the simulator and the reset job. The ETL (`load_params`, `silver_build`, `gold_build`, chained by `daily_run`) runs on Databricks, with the Delta parameter store. Built and tested locally: the SQLite parameter store and its backend factory. Not built yet: the app, the Lakebase parameter backend, Designer and the notebooks.
 
 ## Local development
 
