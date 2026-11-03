@@ -29,6 +29,5 @@ USER app
 WORKDIR /app/apps/param_admin
 EXPOSE 8050
 
-# One worker with threads: the idle tracker behind /idle lives in the process, so every request
-# has to reach the same one.
-CMD ["gunicorn", "--bind", "0.0.0.0:8050", "--workers", "1", "--threads", "4", "app:server"]
+# Port, worker and thread settings are in gunicorn.conf.py.
+CMD ["gunicorn", "app:server"]

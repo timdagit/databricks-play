@@ -14,3 +14,4 @@ resources
 databricks.yml
 .env*
 !.env*.example
+apps/param_admin/bakehouse_core

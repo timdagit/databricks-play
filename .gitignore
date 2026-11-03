@@ -38,3 +38,6 @@ data/raw/
 .DS_Store
 .idea/
 .vscode/
+
+# Copy of bakehouse_core made by scripts/stage_app.py on every bundle deploy
+apps/param_admin/bakehouse_core/

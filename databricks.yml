@@ -8,9 +8,15 @@ artifacts:
   bakehouse_core:
     type: whl
     path: .
-    build: uv build --wheel
+    # Also copies bakehouse_core into the app folder (the app only gets its own folder).
+    build: uv build --wheel && uv run --no-project python scripts/stage_app.py
     files:
       - source: dist/*.whl
+
+# The staged copy is gitignored, so it has to be named here to be uploaded.
+sync:
+  include:
+    - apps/param_admin/bakehouse_core/**
 
 variables:
   catalog:

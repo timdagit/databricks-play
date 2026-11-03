@@ -3,7 +3,9 @@
 Run locally with `uv run python apps/param_admin/app.py`, or in the container with
 `gunicorn app:server`. All settings come from environment variables:
 
-- `PARAM_BACKEND`: sqlite, postgres, lakebase or delta (see `bakehouse_core.params.factory`)
+- `PARAM_BACKEND`: sqlite, postgres or lakebase (see `bakehouse_core.params.factory`). The
+  `lakebase` backend also needs `LAKEBASE_ENDPOINT`, the compute's resource name, and the
+  `PG*` variables that Databricks Apps sets for its postgres resource.
 - `JOB_TRIGGER`: `fake` (default) simulates runs, `databricks` starts the real jobs
 - `APP_USER`: the name recorded in `updated_by` when no user header is present
 - `IDLE_ENABLED`: `true` makes `/idle` report that the idle watchdog is on
@@ -14,7 +16,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from bakehouse_core.config.identity import StaticTokenProvider
+from bakehouse_core.config.identity import LakebaseTokenProvider
 from bakehouse_core.jobs.trigger import FakeJobTrigger, JobTrigger
 from bakehouse_core.params.factory import get_repository
 from bakehouse_core.webapp import create_app
@@ -27,10 +29,17 @@ def _trigger() -> JobTrigger:
     raise ValueError(f"JOB_TRIGGER={kind!r} is not available yet (only 'fake')")
 
 
+def _token_provider(backend: str):
+    if backend != "lakebase":
+        return None
+    from databricks.sdk import WorkspaceClient
+
+    return LakebaseTokenProvider(WorkspaceClient(), os.environ["LAKEBASE_ENDPOINT"])
+
+
 backend = os.environ.get("PARAM_BACKEND", "sqlite").lower()
 repo = get_repository(
-    {**os.environ, "PARAM_BACKEND": backend},
-    token_provider=StaticTokenProvider.from_env() if backend == "lakebase" else None,
+    {**os.environ, "PARAM_BACKEND": backend}, token_provider=_token_provider(backend)
 )
 repo.ensure_schema()
 

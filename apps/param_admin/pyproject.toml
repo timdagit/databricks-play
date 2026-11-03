@@ -1,0 +1,15 @@
+# The app's own dependencies, used by Databricks Apps (it installs from this file and
+# uv.lock). `bakehouse_core` itself is not listed: `scripts/stage_app.py` copies it into this
+# folder on every bundle deploy. Refresh the lock with `uv lock --project apps/param_admin`.
+[project]
+name = "param-admin"
+version = "0.1.0"
+description = "Parameter admin app for the Bakehouse PoC."
+requires-python = ">=3.12"
+dependencies = [
+    "dash>=4.5,<5",
+    "databricks-sdk>=0.160",
+    "gunicorn>=26.2.0",
+    "psycopg[binary]>=3.3.7",
+    "sqlalchemy>=2.1.6",
+]
