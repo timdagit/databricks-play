@@ -15,3 +15,11 @@ Departures from `SPEC.md` and `CLAUDE_CODE_GUIDE.md`, and choices made along the
 - **Python tooling.** uv, as in SPEC §5.2, so the app isn't tied to Python 3.11. This overrides the global venv + `requirements.txt` rule.
 - **Designer notebooks.** `.gitignore` ignores `*.ipynb` except `*.designer.ipynb`. To be reviewed once the first Designer file is committed.
 - **CI.** Deploy-on-merge workflows use a `paths` filter.
+
+## 2026-11-03: orientation findings
+
+- **Tools:** uv 0.13.6, Databricks CLI 1.23.0, gitleaks 8.30.1, Docker 29.7.2. `gh` and `az` are blocked in the Claude sandbox, so Tim runs those.
+- **No `bakehouse_dev` catalog exists.** The spec's step-0 catalog is gone, so nothing needs dropping before the az-inf apply.
+- **No all-purpose cluster exists.** The spec assumed one. Nothing to note about auto-termination, and the guardrail about not using it is moot. az-inf only defines cluster policies.
+- **Resource group `az_databricks`** is in northeurope and has only a `created_by` tag. The spec's project and owner tags are not applied yet (deferred, see `az-inf-requirements.md`).
+- **No gitignored config yet.** Locally the `personal` profile supplies the host. CI will use GitHub Environment secrets. Add `.env.local` only when something needs it.

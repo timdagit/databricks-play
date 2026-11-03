@@ -12,7 +12,7 @@ Changes this project needs in the Terraform project at `/Users/timda/HOME/GIT/az
 | `52-databricks-cluster` | Add a `databricks_external_location` on the new container, reusing the existing storage credential. Add a `databricks_catalog` `bakehouse_dev` with that location as `storage_root`. Add a `databricks_grants` block for `ALL_PRIVILEGES`, following the `learning` pattern. |
 
 **Before the first apply**
-- The `bakehouse_dev` catalog created by hand during the workspace checks must be dropped (Tim to confirm it's empty first), or Terraform will fail on the name clash. Its storage root differs, so import wouldn't work.
+- No `bakehouse_dev` catalog exists in the workspace (checked 2026-11-03), so there is nothing to drop or import. If one is created by hand before the apply, drop it first.
 - Layer `50` must be applied before `52`.
 
 **Not needed**
