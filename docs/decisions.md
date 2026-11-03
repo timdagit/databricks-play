@@ -46,3 +46,19 @@ Departures from `SPEC.md` and `CLAUDE_CODE_GUIDE.md`, and choices made along the
 - **Proven on Databricks:** wheel install and entry points, loading `samples.bakehouse`, writing JSON files to the `raw` volume with plain file paths, creating the `ops` Delta tables, a multi-day backfill, the `duplicates` scenario (14 repeated IDs on 207 rows) and `ops_reset` with its `confirm` guard.
 - **Not yet proven:** the other four scenarios on Databricks (covered by unit tests only), and the `reset_log` and `run_log` rows. Checking them needs a SQL warehouse or a notebook.
 - **Deferred:** `rebuild=true` on reset, and parameter reseeding on a hard reset (needs the Lakebase and Delta backends).
+
+## 2026-11-03: ETL design (workstream 5)
+
+- **Parameters between tasks.** Spec 3.3 says `load_params` passes the values on as task values. Instead it writes them, with their versions, into its `ops.run_log` row under the job run id, and `silver_build` and `gold_build` read that row. This avoids depending on the `dbutils` task-values API, and the lineage record is the same data the tasks use.
+- **Parameter source.** The ETL reads Delta directly through a minimal `DeltaRepository` (`ops.param_definitions`, `ops.param_versions`), created and seeded by `load_params` on first use. Delta has no primary keys, so two simultaneous saves could pick the same version number. The app is the only writer, so this is accepted. **Open for workstream 8:** with the Lakebase backend, `load_params` should read the Unity Catalog-registered Lakebase catalog, chosen by a bundle variable.
+- **Bronze is read as strings.** Auto Loader runs with `inferColumnTypes=false` and `schemaEvolutionMode=rescue`. Silver casts with `try_cast`, so a value that does not fit becomes null and the row is quarantined rather than failing the job.
+- **Quarantine rules.** Rows missing a required value, or with a non-positive quantity, go to `transactions_quarantine` or `reviews_quarantine` with a `_dq_reason`. If the null rate of `paymentMethod` in a batch is above `dq_max_null_pct`, the null rows are quarantined too. Below the limit they are kept.
+- **SCD2** for customers and franchises is staged by `stage_scd2` and applied with one MERGE per virtual day, oldest first, so a backfill gives the same history as day-by-day runs.
+- **Gold is one snapshot per virtual day.** Each table has `as_of_date`. Days are the release day (`_virtual_date`), not the transaction timestamp, so a late file counts on the day it arrives and `incremental` never revisits earlier days. `recompute_gold` rebuilds every day with that day's own parameters. A day's rows are replaced atomically. `incremental` starts after the last successful `gold_build` in `run_log`.
+- **Gold rules (not in the spec).**
+  - Flags compare the last 3 days' average daily revenue with all earlier days.
+  - Loyalty tiers use spend over the lookback window.
+  - Supplier concentration is the share of 7-day revenue sold through each supplier's franchises, using the SCD2 row in force that day.
+  - Review alerts count negative reviews in 7 days. A review is negative if it matches a short keyword list, which suits the simulator's burst text but misses differently worded real reviews.
+  - Targets are the average daily revenue of all earlier days, plus the uplift.
+- **Jobs.** `bakehouse_etl` chains `load_params`, `silver_build` and `gold_build`. `daily_run` runs `simulator` then `bakehouse_etl` as run-job tasks, with a schedule that is paused. Both have one concurrent run, the shared timeout and a duration health warning (`job_duration_warning_seconds`).

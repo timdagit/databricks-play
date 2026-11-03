@@ -11,7 +11,7 @@ It exercises Python ETL jobs, Lakeflow Designer, Databricks Apps (a Dash app tha
 
 ## Status
 
-Early. Built and working on Databricks: the `dev` bundle (schemas, volumes), the simulator and the reset job. Built and tested locally: the parameter store (SQLite) and its backend factory. Not built yet: the ETL, the app, Lakebase and Delta parameter backends, Designer and the notebooks.
+Early. Built and working on Databricks: the `dev` bundle (schemas, volumes), the simulator and the reset job. Built and tested locally, not yet run on Databricks: the ETL (parameters, silver, gold) and the Delta parameter store. Built and tested locally: the SQLite parameter store and its backend factory. Not built yet: the app, the Lakebase parameter backend, Designer and the notebooks.
 
 ## Local development
 
@@ -38,6 +38,7 @@ Variables (defaults are placeholders, override with `--var` or `BUNDLE_VAR_<name
 | `catalog` | Unity Catalog catalog for the target |
 | `idle_stop_minutes` | Idle minutes before anything that bills while running stops |
 | `job_timeout_seconds` | Run timeout for jobs |
+| `job_duration_warning_seconds` | A run longer than this raises a health warning |
 
 ```bash
 databricks bundle validate -t dev -p personal
@@ -48,10 +49,17 @@ databricks bundle deploy -t dev -p personal
 databricks bundle run simulator -t dev -p personal
 databricks bundle run simulator -t dev -p personal --params 'days=3,scenarios=duplicates;null_spike'
 
+# Run the ETL on what has been released (incremental, or mode=recompute_gold)
+databricks bundle run bakehouse_etl -t dev -p personal
+databricks bundle run bakehouse_etl -t dev -p personal --params mode=recompute_gold
+
+# Release a day, then run the ETL on it
+databricks bundle run daily_run -t dev -p personal
+
 # Back to virtual day 0 (confirm must equal the target name)
 databricks bundle run ops_reset -t dev -p personal --params level=data,confirm=dev
 ```
 
 Scenarios: `late_files`, `duplicates`, `null_spike`, `underperforming_franchise`, `negative_review_burst`.
 
-The jobs run on serverless compute and have no schedule, so nothing runs or costs money until you start it. `databricks bundle destroy -t dev -p personal` removes everything the bundle created.
+The jobs run on serverless compute. `daily_run` has a schedule, but it is paused, so nothing runs or costs money until you start it. `databricks bundle destroy -t dev -p personal` removes everything the bundle created.

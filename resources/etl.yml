@@ -1,0 +1,109 @@
+resources:
+  jobs:
+    bakehouse_etl:
+      name: bakehouse_etl_${bundle.target}
+      description: >-
+        Load the parameters as of the virtual date, build silver from the raw files, then gold.
+        Mode incremental builds the new days. Mode recompute_gold rebuilds every day, each with
+        the parameters in force on that day.
+      max_concurrent_runs: 1
+      timeout_seconds: ${var.job_timeout_seconds}
+      health:
+        rules:
+          - metric: RUN_DURATION_SECONDS
+            op: GREATER_THAN
+            value: ${var.job_duration_warning_seconds}
+      parameters:
+        - name: mode
+          default: incremental
+        - name: triggered_by
+          default: manual
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "5"
+            dependencies:
+              - ../dist/*.whl
+      tasks:
+        - task_key: load_params
+          environment_key: default
+          python_wheel_task:
+            package_name: bakehouse_core
+            entry_point: bakehouse-load-params
+            parameters:
+              - --catalog
+              - ${var.catalog}
+              - --run-id
+              - "{{job.run_id}}"
+              - --triggered-by
+              - "{{job.parameters.triggered_by}}"
+        - task_key: silver_build
+          depends_on:
+            - task_key: load_params
+          environment_key: default
+          python_wheel_task:
+            package_name: bakehouse_core
+            entry_point: bakehouse-silver-build
+            parameters:
+              - --catalog
+              - ${var.catalog}
+              - --run-id
+              - "{{job.run_id}}"
+              - --triggered-by
+              - "{{job.parameters.triggered_by}}"
+        - task_key: gold_build
+          depends_on:
+            - task_key: silver_build
+          environment_key: default
+          python_wheel_task:
+            package_name: bakehouse_core
+            entry_point: bakehouse-gold-build
+            parameters:
+              - --catalog
+              - ${var.catalog}
+              - --mode
+              - "{{job.parameters.mode}}"
+              - --run-id
+              - "{{job.run_id}}"
+              - --triggered-by
+              - "{{job.parameters.triggered_by}}"
+
+    daily_run:
+      name: daily_run_${bundle.target}
+      description: Release virtual days with the simulator, then run the ETL on them.
+      max_concurrent_runs: 1
+      timeout_seconds: ${var.job_timeout_seconds}
+      health:
+        rules:
+          - metric: RUN_DURATION_SECONDS
+            op: GREATER_THAN
+            value: ${var.job_duration_warning_seconds}
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: UTC
+        pause_status: PAUSED
+      parameters:
+        - name: days
+          default: "1"
+        - name: scenarios
+          default: ""
+        - name: mode
+          default: incremental
+        - name: triggered_by
+          default: manual
+      tasks:
+        - task_key: simulate
+          run_job_task:
+            job_id: ${resources.jobs.simulator.id}
+            job_parameters:
+              days: "{{job.parameters.days}}"
+              scenarios: "{{job.parameters.scenarios}}"
+              triggered_by: "{{job.parameters.triggered_by}}"
+        - task_key: etl
+          depends_on:
+            - task_key: simulate
+          run_job_task:
+            job_id: ${resources.jobs.bakehouse_etl.id}
+            job_parameters:
+              mode: "{{job.parameters.mode}}"
+              triggered_by: "{{job.parameters.triggered_by}}"

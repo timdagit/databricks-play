@@ -22,6 +22,9 @@ variables:
   job_timeout_seconds:
     description: Run timeout for jobs. Only catches runaways, since a job has no idle state.
     default: 900
+  job_duration_warning_seconds:
+    description: A run longer than this raises a health warning, well before the timeout.
+    default: 600
 
 presets:
   tags:

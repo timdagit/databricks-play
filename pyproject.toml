@@ -12,6 +12,8 @@ dependencies = [
 bakehouse-simulate = "bakehouse_core.jobs.simulate:main"
 bakehouse-reset = "bakehouse_core.jobs.reset:main"
 bakehouse-load-params = "bakehouse_core.jobs.load_params:main"
+bakehouse-silver-build = "bakehouse_core.jobs.silver_build:main"
+bakehouse-gold-build = "bakehouse_core.jobs.gold_build:main"
 
 [dependency-groups]
 dev = [
