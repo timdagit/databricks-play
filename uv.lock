@@ -15,14 +15,17 @@ wheels = [
 name = "bakehouse-core"
 version = "0.1.0"
 source = { editable = "." }
+default-groups = ["app", "dev"]
 dependencies = [
-    { name = "dash" },
-    { name = "gunicorn" },
-    { name = "psycopg", extra = ["binary"] },
     { name = "sqlalchemy" },
 ]
 
 [package.dev-dependencies]
+app = [
+    { name = "dash" },
+    { name = "gunicorn" },
+    { name = "psycopg", extra = ["binary"] },
+]
 dev = [
     { name = "pyspark" },
     { name = "pytest" },
@@ -30,14 +33,14 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [
+requires-dist = [{ name = "sqlalchemy", specifier = ">=2.1.6" }]
+
+[package.metadata.requires-dev]
+app = [
     { name = "dash", specifier = ">=4.5.0" },
     { name = "gunicorn", specifier = ">=26.2.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.7" },
-    { name = "sqlalchemy", specifier = ">=2.1.6" },
 ]
-
-[package.metadata.requires-dev]
 dev = [
     { name = "pyspark", specifier = ">=4.0,<4.1" },
     { name = "pytest", specifier = ">=9.2.0" },
