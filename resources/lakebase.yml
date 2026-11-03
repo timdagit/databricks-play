@@ -2,7 +2,7 @@
 # CLI 1.23, so expect to adjust fields after the first plan.
 resources:
   postgres_projects:
-    params:
+    params_project:
       project_id: bakehouse-params-${bundle.target}
       display_name: Bakehouse parameters (${bundle.target})
       pg_version: 16
@@ -25,10 +25,10 @@ resources:
       purge_on_delete: true
 
   postgres_catalogs:
-    params:
+    params_catalog:
       # Registers the database in Unity Catalog so the ETL can read parameters with Spark SQL.
       catalog_id: bakehouse_params_${bundle.target}
       # Assumes the project's default branch is called `production`; confirm on the first plan.
-      branch: projects/${resources.postgres_projects.params.project_id}/branches/production
+      branch: projects/${resources.postgres_projects.params_project.project_id}/branches/production
       postgres_database: bakehouse
       create_database_if_missing: true
