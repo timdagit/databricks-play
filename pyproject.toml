@@ -16,11 +16,21 @@ bakehouse-silver-build = "bakehouse_core.jobs.silver_build:main"
 bakehouse-gold-build = "bakehouse_core.jobs.gold_build:main"
 
 [dependency-groups]
+# The Dash app. A group, not a dependency, so the wheel the jobs install on serverless
+# stays small. `uv sync` installs it by default (see `default-groups` below).
+app = [
+    "dash>=4.5.0",
+    "gunicorn>=26.2.0",
+    "psycopg[binary]>=3.3.7",
+]
 dev = [
     "pyspark>=4.0,<4.1",
     "pytest>=9.2.0",
     "ruff>=0.17.3",
 ]
+
+[tool.uv]
+default-groups = ["dev", "app"]
 
 [build-system]
 requires = ["hatchling"]
