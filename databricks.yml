@@ -4,6 +4,12 @@ bundle:
 include:
   - resources/*.yml
 
+# Upload the built wheel to a Unity Catalog volume instead of the bundle's workspace folder, so a
+# notebook can `%pip install` it from a known place. The volume (resources/schemas.yml) has to
+# exist before a deploy can use it, so it was created by an earlier deploy.
+workspace:
+  artifact_path: /Volumes/${var.catalog}/ops/artifacts
+
 artifacts:
   bakehouse_core:
     type: whl
