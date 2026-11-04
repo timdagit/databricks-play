@@ -81,7 +81,7 @@ resources:
               - --triggered-by
               - "{{job.parameters.triggered_by}}"
         # A Lakeflow Designer prep, built on the canvas and never edited as code. It reads silver
-        # and writes gold.review_weekly_summary. Its franchises source and output table are fixed
+        # and writes a table in the gold schema, named in its output step. Its franchises source and output table are fixed
         # to the dev catalog, because the source node cannot take a parameter.
         - task_key: review_explorer
           description: "component=designer. Weekly review counts per franchise, from silver."
