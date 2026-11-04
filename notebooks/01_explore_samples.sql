@@ -9,7 +9,8 @@
 
 -- COMMAND ----------
 
-CREATE WIDGET TEXT catalog DEFAULT 'bakehouse_dev';
+-- DBTITLE 1,Show catalog parameter
+SELECT :catalog AS catalog;
 
 -- COMMAND ----------
 
