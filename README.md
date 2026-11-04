@@ -64,8 +64,18 @@ The app folder only gets its own files, so every deploy copies `bakehouse_core` 
 |---|---|---|
 | ETL and simulator jobs | The bundle builds a wheel (`uv build --wheel`), uploads it to the `ops.artifacts` volume (`workspace.artifact_path`), and the serverless job environment installs it at the start of each run | Proven |
 | The Dash app | A staged copy in `apps/param_admin/`, made by `scripts/stage_app.py` at deploy | Proven |
-| Notebooks 02 and 03 | `%pip install` of the wheel from the `ops.artifacts` volume, then a restart. No fallback | 03 proven, 02 not yet run this way |
+| Notebooks 02 and 03, option 1: the wheel from the volume | `%pip install` of the wheel from the `ops.artifacts` volume, then a restart. This is what the notebooks do now, with no fallback | Proven |
+| Notebooks 02 and 03, option 2: the repo's `src` folder | In a Git folder, add `../src` to `sys.path` before importing. The notebooks used this first, and no package was installed then | Proven |
 | Notebooks run as bundle `notebook_task`s | Needs the wheel in the job environment, or `src` synced next to the notebook | Not yet built |
+
+Option 2 needs the notebook to sit in a Git folder next to `src`. It picks up code changes on a Git pull, with no deploy. Option 1 needs a deploy to refresh the wheel, but it works wherever the volume can be read and it is the same package the jobs run. To use option 2, replace the install and restart cells with:
+
+```python
+import os
+import sys
+
+sys.path.append(os.path.abspath("../src"))
+```
 
 The volume has to exist before a deploy can upload to it, so it was created by an earlier deploy than the one that set `artifact_path`. The notebook's install path names the catalog and the wheel version, so it needs editing if either changes. A notebook imported as a single file has neither the volume install nor the `src` folder, so it cannot import the package.
 
