@@ -80,6 +80,18 @@ resources:
               - "{{job.run_id}}"
               - --triggered-by
               - "{{job.parameters.triggered_by}}"
+        # A Lakeflow Designer prep, built on the canvas and never edited as code. It reads silver
+        # and writes gold.review_weekly_summary. Its franchises source and output table are fixed
+        # to the dev catalog, because the source node cannot take a parameter.
+        - task_key: review_explorer
+          description: "component=designer. Weekly review counts per franchise, from silver."
+          depends_on:
+            - task_key: gold_build
+          environment_key: default
+          notebook_task:
+            notebook_path: ../lakeflow/review_explorer.designer.ipynb
+            base_parameters:
+              catalog: ${var.catalog}
 
     daily_run:
       name: daily_run_${bundle.target}
