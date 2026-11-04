@@ -5,15 +5,18 @@
 -- MAGIC A plain SQL tour of the public sample data the whole PoC is built on: what is in each table,
 -- MAGIC how far the sales dates reach, and how much of that the simulator has released so far.
 -- MAGIC
--- MAGIC Run it on a SQL warehouse or serverless compute. It needs a text parameter named `catalog`
--- MAGIC (default `bakehouse_dev`). On a SQL warehouse, add it with the notebook's "Add parameter" option,
--- MAGIC because `CREATE WIDGET` is not supported there and the parameter is not saved in this file.
--- MAGIC It only matters for the last section. As a job task, pass `catalog` as a base parameter.
+-- MAGIC Run it on a SQL warehouse or serverless compute. The next cell sets the catalog in a session
+-- MAGIC variable, because notebook parameters and `CREATE WIDGET` are not saved in a `.sql` file or
+-- MAGIC not supported on a SQL warehouse. Change the value there to look at another catalog. It only
+-- MAGIC matters for the last section.
 
 -- COMMAND ----------
 
--- DBTITLE 1,Show catalog parameter
-SELECT :catalog AS catalog;
+DECLARE OR REPLACE VARIABLE catalog_name STRING DEFAULT 'bakehouse_dev';
+
+-- COMMAND ----------
+
+SELECT catalog_name AS catalog;
 
 -- COMMAND ----------
 
@@ -145,4 +148,4 @@ LIMIT 10;
 -- COMMAND ----------
 
 SELECT virtual_date, phase, updated_at
-FROM IDENTIFIER(:catalog || '.ops.sim_clock');
+FROM IDENTIFIER(catalog_name || '.ops.sim_clock');
