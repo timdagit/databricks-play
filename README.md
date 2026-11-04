@@ -64,8 +64,7 @@ The app folder only gets its own files, so every deploy copies `bakehouse_core` 
 |---|---|---|
 | ETL and simulator jobs | The bundle builds a wheel (`uv build --wheel`), uploads it to the `ops.artifacts` volume (`workspace.artifact_path`), and the serverless job environment installs it at the start of each run | Proven |
 | The Dash app | A staged copy in `apps/param_admin/`, made by `scripts/stage_app.py` at deploy | Proven |
-| Notebook 03 | `%pip install` of the wheel from the `ops.artifacts` volume, then a restart. No fallback | Proven |
-| Notebook 02, opened from a Git folder | Not installed. If `import bakehouse_core` fails, the notebook adds the repo's `../src` folder to `sys.path` | Likely, not yet confirmed which path is used |
+| Notebooks 02 and 03 | `%pip install` of the wheel from the `ops.artifacts` volume, then a restart. No fallback | 03 proven, 02 not yet run this way |
 | Notebooks run as bundle `notebook_task`s | Needs the wheel in the job environment, or `src` synced next to the notebook | Not yet built |
 
 The volume has to exist before a deploy can upload to it, so it was created by an earlier deploy than the one that set `artifact_path`. The notebook's install path names the catalog and the wheel version, so it needs editing if either changes. A notebook imported as a single file has neither the volume install nor the `src` folder, so it cannot import the package.

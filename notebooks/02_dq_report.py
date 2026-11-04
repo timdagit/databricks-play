@@ -7,6 +7,18 @@
 # MAGIC
 # MAGIC Run the simulator with `scenarios=duplicates;null_spike;late_files` and then the ETL to give
 # MAGIC it something to show. Run it on serverless compute. It only reads tables.
+# MAGIC
+# MAGIC The log parsing comes from the `bakehouse_core` wheel, which `bundle deploy` uploads to the
+# MAGIC `bakehouse_dev.ops.artifacts` volume. There is no fallback: if the install fails, so does the
+# MAGIC notebook. `%pip` cannot take a variable, so the catalog in the path is written out.
+
+# COMMAND ----------
+
+# MAGIC %pip install /Volumes/bakehouse_dev/ops/artifacts/.internal/bakehouse_core-0.1.0-py3-none-any.whl
+
+# COMMAND ----------
+
+dbutils.library.restartPython()
 
 # COMMAND ----------
 
@@ -18,19 +30,12 @@ runs = int(dbutils.widgets.get("runs"))
 
 # COMMAND ----------
 
-# The parsing lives in bakehouse_core. As a job it comes from the wheel; opened from a Git folder
-# it comes from the repo's src folder.
-try:
-    import bakehouse_core  # noqa: F401
-except ModuleNotFoundError:
-    import os
-    import sys
-
-    sys.path.append(os.path.abspath("../src"))
-
 from pyspark.sql import functions as F
 
+import bakehouse_core
 from bakehouse_core.dq.report import parse_silver_details
+
+print("bakehouse_core loaded from:", bakehouse_core.__file__)
 
 
 def table(schema: str, name: str):
