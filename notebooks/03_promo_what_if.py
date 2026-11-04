@@ -1,11 +1,4 @@
 # Databricks notebook source
-# /// script
-# [tool.databricks.environment]
-# environment_version = "6"
-# dependencies = [
-#   "/Volumes/bakehouse_dev/ops/artifacts/.internal/bakehouse_core-0.1.0-py3-none-any.whl",
-# ]
-# ///
 # MAGIC %md
 # MAGIC # 03 Promo what-if
 # MAGIC
