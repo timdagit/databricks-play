@@ -13,7 +13,7 @@ It exercises Python ETL jobs, Lakeflow Designer, Databricks Apps (a Dash app tha
 
 Scope: `dev` only. The spec's `test` and `prod` targets, service principals and deploy workflows (build plan workstream 12) are out of scope for this build.
 
-Early. Built and working on Databricks: the `dev` bundle (schemas, volumes), the simulator and the reset job. The ETL (`load_params`, `silver_build`, `gold_build`, chained by `daily_run`) runs on Databricks, with the Delta parameter store. Built and tested locally: the SQLite parameter store and its backend factory. The parameter admin app runs locally (SQLite, or Postgres in Docker) and on Databricks Apps with Lakebase, and the ETL reads the saved parameters from Lakebase. The run buttons start the real jobs, and the app stops itself after a minute of inactivity. Not built yet: the Delta backend in the app, Designer and the notebooks.
+Early. Built and working on Databricks: the `dev` bundle (schemas, volumes), the simulator and the reset job. The ETL (`load_params`, `silver_build`, `gold_build`, chained by `daily_run`) runs on Databricks, with the Delta parameter store. Built and tested locally: the SQLite parameter store and its backend factory. The parameter admin app runs locally (SQLite, or Postgres in Docker) and on Databricks Apps with Lakebase, and the ETL reads the saved parameters from Lakebase. The run buttons start the real jobs, and the app stops itself after a minute of inactivity. Notebooks 01 (SQL), 02 (data-quality report) and 03 (promo what-if, with charts) run in the workspace. Not built yet: the Delta backend in the app, Designer, and the backend comparison notebook.
 
 ## Local development
 
@@ -57,6 +57,17 @@ databricks apps stop bakehouse-param-admin-dev -p personal   # stop it when fini
 The app stops itself after `idle_stop_minutes` of inactivity (page loads and clicks count, the status polling does not). After the first deploy, run `bash scripts/grant_app_self_manage.sh` once so it is allowed to. Open it from the Apps page in the workspace. It signs you in with workspace SSO and records your email as `updated_by`. A save with the effective-from field blank applies to every virtual day. Press Rerun ETL to rebuild gold from the earliest date you saved, or Run next day to release and process one more virtual day. You can also run `bakehouse_etl` with `mode=recompute_gold` (and optionally `from_date=YYYY-MM-DD`). The ETL reads the saved values from Lakebase through its Unity Catalog registration.
 
 The app folder only gets its own files, so every deploy copies `bakehouse_core` into `apps/param_admin/` first (`scripts/stage_app.py`, run by the artifact build). That copy is gitignored.
+
+## How `bakehouse_core` reaches each part
+
+| Where it runs | How it gets the package | Status |
+|---|---|---|
+| ETL and simulator jobs | The bundle builds a wheel (`uv build --wheel`), uploads it to the bundle's workspace files, and the serverless job environment installs it | Proven |
+| The Dash app | A staged copy in `apps/param_admin/`, made by `scripts/stage_app.py` at deploy | Proven |
+| Notebooks 02 and 03, opened from a Git folder | Not installed. If `import bakehouse_core` fails, the notebook adds the repo's `../src` folder to `sys.path` | Likely, not yet confirmed which path is used |
+| Notebooks run as bundle `notebook_task`s | Needs the wheel in the job environment, or `src` synced next to the notebook | Not yet built |
+
+Interactive notebooks only get the package if it can be imported: from the `src` fallback in a Git folder, or from a wheel installed in the session. A notebook imported as a single file has neither. Update this table once a job has run the notebooks.
 
 ## Variables, deploy and destroy
 
