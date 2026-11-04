@@ -30,3 +30,9 @@ resources:
       name: checkpoints
       volume_type: MANAGED
       comment: Auto Loader checkpoints.
+    artifacts:
+      catalog_name: ${var.catalog}
+      schema_name: ${resources.schemas.ops.name}
+      name: artifacts
+      volume_type: MANAGED
+      comment: The bakehouse_core wheel, uploaded by bundle deploy and installed by jobs and notebooks.
