@@ -11,6 +11,18 @@
 # MAGIC
 # MAGIC The gold column `revenue_at_promo` uses the discount saved in the app and no volume change.
 # MAGIC This notebook lets you try other values. Run it on serverless compute. It only reads tables.
+# MAGIC
+# MAGIC The calculation comes from the `bakehouse_core` wheel, which `bundle deploy` uploads to the
+# MAGIC `bakehouse_dev.ops.artifacts` volume. There is no fallback: if the install fails, so does the
+# MAGIC notebook. `%pip` cannot take a variable, so the catalog in the path is written out.
+
+# COMMAND ----------
+
+# MAGIC %pip install /Volumes/bakehouse_dev/ops/artifacts/.internal/bakehouse_core-0.1.0-py3-none-any.whl
+
+# COMMAND ----------
+
+dbutils.library.restartPython()
 
 # COMMAND ----------
 
@@ -24,21 +36,14 @@ volume_uplift = float(dbutils.widgets.get("volume_uplift_pct")) / 100
 
 # COMMAND ----------
 
-# The calculation lives in bakehouse_core. As a job it comes from the wheel; opened from a Git
-# folder it comes from the repo's src folder.
-try:
-    import bakehouse_core  # noqa: F401
-except ModuleNotFoundError:
-    import os
-    import sys
-
-    sys.path.append(os.path.abspath("../src"))
-
 import matplotlib.pyplot as plt
 import pandas as pd
 from pyspark.sql import functions as F
 
+import bakehouse_core
 from bakehouse_core.transforms.promo import break_even_uplift, project_revenue
+
+print("bakehouse_core loaded from:", bakehouse_core.__file__)
 
 # COMMAND ----------
 
