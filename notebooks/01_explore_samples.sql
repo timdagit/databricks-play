@@ -5,7 +5,10 @@
 -- MAGIC A plain SQL tour of the public sample data the whole PoC is built on: what is in each table,
 -- MAGIC how far the sales dates reach, and how much of that the simulator has released so far.
 -- MAGIC
--- MAGIC Run it on serverless compute. The `catalog` widget only matters for the last section.
+-- MAGIC Run it on a SQL warehouse or serverless compute. It needs a text parameter named `catalog`
+-- MAGIC (default `bakehouse_dev`). On a SQL warehouse, add it with the notebook's "Add parameter" option,
+-- MAGIC because `CREATE WIDGET` is not supported there and the parameter is not saved in this file.
+-- MAGIC It only matters for the last section. As a job task, pass `catalog` as a base parameter.
 
 -- COMMAND ----------
 
