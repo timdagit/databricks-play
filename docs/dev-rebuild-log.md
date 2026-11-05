@@ -9,12 +9,12 @@ This file records every manual step, setting and challenge, so the rebuild can b
 | Resource | Defined in | Rebuild route | Settings to reproduce and known gotchas |
 |---|---|---|---|
 | Catalog `bakehouse_dev` | az-inf (Terraform) | Stays. `bundle destroy` does not remove it | Storage, credential and external location come from az-inf |
-| Schemas `bronze`, `silver`, `gold`, `ops` | `resources/schemas.yml` | Catalog Explorer or SQL | Comments are in the YAML. Tables created outside the bundle (Designer outputs) may block a schema delete |
-| Volumes `bronze.raw`, `ops.checkpoints`, `ops.artifacts` | `resources/schemas.yml` | Catalog Explorer or SQL | All managed volumes |
-| The `bakehouse_core` wheel | built by the bundle artifact step | `uv build --wheel`, then upload to `ops.artifacts` by hand | Jobs must install it from the volume path, never a `.bundle/` path |
-| Job `simulator` | `resources/jobs.yml` | Jobs UI | Serverless, environment version 5 plus the wheel; wheel task `bakehouse-simulate`; parameters `days`, `mode`, `scenarios`, `triggered_by`; one concurrent run; timeout from `job_timeout_seconds` |
-| Job `ops_reset` | `resources/jobs.yml` | Jobs UI | Entry point `bakehouse-reset`; parameters `level`, `confirm`, `requested_by`; the confirm value must equal the target name |
-| Job `bakehouse_etl` | `resources/etl.yml` | Jobs UI | Tasks `load_params`, `silver_build`, `gold_build` (wheel tasks) and `review_explorer` (notebook task); parameters `mode`, `from_date`, `triggered_by`; duration health rule; params passed as `--catalog`, `--param-backend`, `--params-catalog` |
+| Schemas `bronze`, `silver`, `gold`, `ops` | `dab-data/resources/schemas.yml` | The data bundle, not the portal | Comments are in the YAML. Tables created outside the bundle (Designer outputs) may block a schema delete |
+| Volumes `bronze.raw`, `ops.checkpoints`, `ops.artifacts` | `dab-data/resources/schemas.yml` | The data bundle, not the portal | All managed volumes |
+| The `bakehouse_core` wheel | built by the bundle artifact step | Not used by dev jobs, which run from source. Still needed for the app, probably, and from sandbox up | Never install it from a `.bundle/` path |
+| Job `simulator` | `resources/jobs.yml` | Jobs UI | Serverless; `spark_python_task` running `jobs/init.py simulate ...` from the Git folder, environment listing `sqlalchemy`; parameters `days`, `mode`, `scenarios`, `triggered_by`; one concurrent run; timeout from `job_timeout_seconds` |
+| Job `ops_reset` | `resources/jobs.yml` | Jobs UI | `jobs/init.py reset ...`; parameters `level`, `confirm`, `requested_by`; the confirm value must equal the target name |
+| Job `bakehouse_etl` | `resources/etl.yml` | Jobs UI | Tasks `load_params`, `silver_build`, `gold_build` (`jobs/init.py` with `load-params`, `silver-build`, `gold-build`) and `review_explorer` (notebook task); parameters `mode`, `from_date`, `triggered_by`; duration health rule; params passed as `--catalog`, `--param-backend`, `--params-catalog` |
 | Job `daily_run` | `resources/etl.yml` | Jobs UI | `run_job_task`s for the simulator and the ETL; parameters `days`, `scenarios`, `etl_mode`, `triggered_by`; daily schedule, paused. A parent's parameters are pushed down to child jobs by name |
 | Lakebase project `bakehouse-params-dev` | `resources/lakebase.yml` | Lakebase UI | Postgres 16, 0.5 to 2 CU, suspend after 60 seconds, 2 days history, tags |
 | Lakebase database `bakehouse` | `resources/lakebase.yml` | Lakebase UI or SQL | Branch `production`. Its owner must be an existing role |
@@ -27,6 +27,8 @@ This file records every manual step, setting and challenge, so the rebuild can b
 App environment: `PARAM_BACKEND`, `JOB_TRIGGER=databricks`, `ETL_JOB_ID` and `DAILY_RUN_JOB_ID` (from the job resources), `LAKEBASE_ENDPOINT`, `APP_NAME`, `IDLE_STOP_MINUTES`.
 
 ## 2. Challenges expected before starting
+
+- **Dev runs from source, so each job passes its name first to `jobs/init.py`.** The script finds `src` through its own location (`__file__`). That is assumed to work on serverless and is checked on the first run.
 
 - **The app needs `bakehouse_core`, and its staged copy is gitignored.** The bundle copies the package into `apps/param_admin/` at deploy. A Git folder has no such copy. Options to try: the wheel as an app dependency, or committing the copy.
 - **The Unity Catalog registration of Lakebase** has no known portal route yet.
@@ -58,8 +60,8 @@ Filled in as each step is done, with the setting used and anything unexpected.
 
 Each step is checked before the next. The ETL is tested first with the Delta parameter backend (`--param-backend delta`), so the jobs can be proven before Lakebase exists.
 
-1. Schemas and volumes (portal or SQL).
-2. Build the wheel and upload it to `ops.artifacts`.
+1. Deploy the data bundle (`dab-data/`): schemas and volumes.
+2. (Wheel: deferred. Dev jobs run from source.)
 3. Jobs: `simulator`, `ops_reset`, `bakehouse_etl`, then `daily_run`. Run them with the Delta backend.
 4. Lakebase project, database and Unity Catalog registration. Switch the ETL to Lakebase.
 5. The app, with its resources and environment variables. Then the self-stop grant.

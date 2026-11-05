@@ -37,8 +37,12 @@ deploy. Record each departure in `docs/decisions.md`.
   work around a block.
 
 ## Where things live
-- One bundle at the repo root, `bundle.name: bakehouse`. Layout follows spec
-  §5.1, minus `infra/`.
+- Two bundles (spec §9.3). `dab-data/` holds the schemas and volumes and is
+  deployed to every environment, dev included. The compute bundle (jobs, app,
+  Lakebase, Designer tasks) is still at the repo root as `bundle.name:
+  bakehouse` and moves to `dab-compute/` when sandbox is built. Dev compute is
+  hand-built from the workspace Git folder and runs code from source
+  (`jobs/init.py`); sandbox and above run the wheel.
 - **Infrastructure is all in az-inf** (`/Users/timda/HOME/GIT/az-inf`, with
   its own CLAUDE.md and skill). Do not create Terraform in this repo. az-inf
   already provides the workspace, ADLS storage, access connector, Unity

@@ -296,7 +296,7 @@ bakehouse-dbx-poc/
 | `test` | production | `sp-bakehouse-test` | `sp-bakehouse-test` | `bakehouse_test` | paused |
 | `prod` | production | `sp-bakehouse-prod` | `sp-bakehouse-prod` | `bakehouse_prod` | daily |
 
-- **Change planned (build workstream 14):** dev is rebuilt by hand in the portal (§9.3), and the bundle gets a new `sandbox` target (development mode, as Tim, catalog `bakehouse_sandbox`). That target replaces `dev` as the bundle's first target.
+- **Change planned (build workstream 14):** dev is rebuilt by hand in the portal (§9.3), and the bundle gets a new `sandbox` target (development mode, as Tim, catalog `bakehouse_sandbox`). That target replaces `dev` as the compute bundle's first target. Schemas and volumes are a separate data bundle (§9.3) that is deployed to every environment, dev included.
 - **Deploy and run identity:** when the deploying identity differs from `run_as`, bundles only support jobs and pipelines. The app and Lakebase resources therefore require that CI deploys as the same SP that runs the resources.
 - **Workspace host:** supplied through `DATABRICKS_HOST`, never written in `databricks.yml`, because the repo is public.
 - **Tags:** `presets.tags` sets `project`, `env: ${bundle.target}` and `owner` on everything the bundle deploys (section 6.3).
@@ -558,7 +558,7 @@ This PoC is code-first: Claude Code wrote the code and the YAML up front, so eve
 
 | Environment | How resources get there | Who changes it |
 |---|---|---|
-| **dev** | By hand in the portal, from code in a workspace Git folder. No bundle deployment. | Developers |
+| **dev** | Compute (jobs, apps) by hand in the portal, running code from source in a workspace Git folder. Data objects (schemas, volumes) from the data bundle. | Developers |
 | **sandbox** | First bundle deployment (development mode). Integration and rough testing. | Developers, through the bundle |
 | **test, prod** | Bundle deployments from CI only (production mode, run as a service principal) | CI |
 
@@ -582,7 +582,19 @@ This PoC is code-first: Claude Code wrote the code and the YAML up front, so eve
 
 - Once a resource is captured, the YAML is the master for sandbox and above. Later dev changes are captured again, and the variable substitutions are re-checked in the diff.
 - Never point a bundle target at the same catalog or names as hand-made dev resources. Separate catalogs (`bakehouse_dev`, `bakehouse_sandbox`) avoid clashes.
-- Dev jobs reference code in the Git folder (or a wheel built from it), never the copies a bundle deploys under `.bundle/`.
+- Dev jobs reference code in the Git folder, never the copies a bundle deploys under `.bundle/`.
+
+**Two bundles (decided 2026-11-05)**
+
+- **`dab-data/`** holds the schemas and volumes, including the `ops.artifacts` volume for the wheel. Unity Catalog objects cannot be exported from the portal into Git, so they always come from a bundle, in every environment including dev. It never uses development mode, because that would prefix schema names; environments are separated by catalog instead. It is deployed first.
+- **`dab-compute/`** holds jobs, the app, Lakebase and the Designer tasks. It starts at sandbox. Until then the compute bundle stays at the repo root, where its YAML is the reference that the hand-built dev jobs are compared with.
+- **Why separate:** compute can be rebuilt or destroyed without touching data. The reverse is not true: destroying the data bundle deletes every table in its schemas, including tables a job or a Designer flow created.
+
+**Code in dev and above**
+
+- **Dev runs from source.** Jobs are `spark_python_task`s that run `jobs/init.py` from the Git folder, with the job name first and then its parameters. Their environment lists the dependencies (for example `sqlalchemy`) because there is no wheel to declare them.
+- **Sandbox and above run the wheel**, through `python_wheel_task` entry points, uploaded to the `ops.artifacts` volume by `workspace.artifact_path`. Notebooks install it with `%pip install` from the volume.
+- **Capture is a conversion,** not a copy: task type, code path and dependencies all differ between dev and sandbox, as well as the variables.
 
 ---
 

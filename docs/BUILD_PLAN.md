@@ -269,7 +269,8 @@ The workstreams below are in a sensible dependency order. Reorder, merge or spli
 - **Dev, rebuilt by hand:** dev runs again, built in the portal from the Git folder with no bundle deployment. It produces the same gold outputs, the app works on Lakebase, and the run buttons and idle stop behave as before.
 - **A log:** `docs/dev-rebuild-log.md` records every manual step, setting and parameter value used to build dev.
 - **Captured YAML:** the jobs built by hand in dev are exported to YAML and compared with the existing bundle YAML. Differences are resolved and recorded in `docs/decisions.md`.
-- **Sandbox:** a `bakehouse_sandbox` catalog (Terraform) and a `sandbox` bundle target (development mode), deployed for the first time and seeded.
+- **Two bundles:** `dab-data/` (schemas and volumes, deployed to every environment including dev) and `dab-compute/` (jobs, app, Lakebase, Designer tasks, starting at sandbox). See spec §9.3.
+- **Sandbox:** a `bakehouse_sandbox` catalog (Terraform) and a `sandbox` target in both bundles (development mode for compute only), deployed for the first time and seeded.
 
 **Sequence (suggested)**
 
@@ -281,8 +282,9 @@ The workstreams below are in a sensible dependency order. Reorder, merge or spli
    - Afterwards, check what's left: the catalog, tables created outside the bundle (the Designer output tables, `gold.review_weekly_summary*`), the Git folder.
    - Drop leftover schemas by hand if a clean start is wanted.
 3. **Rebuild dev in the portal.** Tim does this; Claude Code guides and logs.
-   - Build the `bakehouse_core` wheel from the repo and upload it to a dev volume, for example `/Volumes/bakehouse_dev/ops/artifacts/`.
-   - Create the schemas and volumes, then the jobs (`simulator`, `bakehouse_etl`, `daily_run`, `ops_reset`) in the Jobs UI. Wheel tasks point at the volume wheel. Notebook and Designer tasks point at the Git folder, never at `.bundle/`.
+   - Deploy the data bundle (`dab-data/`): the schemas and volumes, including `ops.artifacts`. It is the one part of dev that comes from a bundle.
+   - Create the jobs (`simulator`, `bakehouse_etl`, `daily_run`, `ops_reset`) in the Jobs UI. Each runs `jobs/init.py` from the Git folder as a `spark_python_task`, with the job name first and then its parameters, and lists `sqlalchemy` in its environment. Notebook and Designer tasks point at the Git folder, never at `.bundle/`.
+   - The wheel is not used in dev, except where something cannot import from `src` (the app, probably).
    - Create the Lakebase project (scale-to-zero at 60 seconds) and run the grant script.
    - Create the app in the Apps UI from `apps/param_admin` in the Git folder, with the `postgres` and `job` resources. Then grant it self-stop.
    - Set dev's parameter values on the resources: job parameters, app environment variables.
@@ -293,6 +295,7 @@ The workstreams below are in a sensible dependency order. Reorder, merge or spli
    - Note which resources had no export route: app, Lakebase, schemas, warehouse. Those stay hand-written YAML.
 5. **Sandbox.**
    - **Terraform:** add a `bakehouse-sandbox` container, external location and the `bakehouse_sandbox` catalog. Tim applies.
+   - **Layout:** move the compute bundle into `dab-compute/`. Its relative paths change, and the app, notebooks and `src` sit outside its root, so it needs `sync.paths`. Bundle commands are then run from inside each folder. Sandbox compute uses wheel tasks again.
    - **`databricks.yml`:** add a `sandbox` target (development mode, as Tim, catalog `bakehouse_sandbox`, schedules paused). Retire the `dev` target; remove it or leave it as a comment.
    - **Deploy:** `bundle validate`, then `bundle deploy -t sandbox`. Seed with `ops_reset` and `daily_run`. Check the app works and that its name doesn't clash with the hand-built dev app.
 6. **Docs.** Update spec §5.3 (targets), `CLAUDE_CODE_GUIDE.md` (dev is hand-built; the bundle starts at sandbox) and `docs/ops.md`.
