@@ -36,15 +36,15 @@ App environment: `PARAM_BACKEND`, `JOB_TRIGGER=databricks`, `ETL_JOB_ID` and `DA
 
 ## 3. Before destroy
 
-- [ ] Everything committed and pushed, from the Mac and from the workspace Git folder, including `lakeflow/review_explorer.designer.ipynb`
-- [ ] `databricks bundle plan -t dev -p personal` shows no drift, or the drift is written down below
-- [ ] Parameter values saved in the app are noted below
+- [x] Everything committed and pushed, from the Mac and from the workspace Git folder, including `lakeflow/review_explorer.designer.ipynb`
+- [x] `databricks bundle plan -t dev -p personal` shows no drift, or the drift is written down below
+- [x] Parameter values saved in the app are noted below
 - [ ] Manual post-deploy steps noted below
 - [ ] Deletion list from `databricks bundle destroy -t dev -p personal` reviewed together before confirming
 
-Drift found:
+Drift found: none. `bundle plan` showed zero changes (2026-11-05).
 
-Saved parameter values (name and value only):
+Saved parameter values (name and value only): none worth keeping. They were for demonstration, so the rebuild starts from the seeded defaults.
 
 Manual post-deploy steps done so far:
 
