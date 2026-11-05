@@ -68,10 +68,12 @@ Each step is checked before the next. The ETL is tested first with the Delta par
 
 ### Done
 
-- **Destroy (2026-11-05).** `databricks bundle destroy -t dev -p personal` reported 15 deleted: four jobs, the app, three Lakebase resources, four schemas and three volumes. Tim checks the portal for anything left over.
+- **Destroy (2026-11-05).** `databricks bundle destroy -t dev -p personal` reported 15 deleted: four jobs, the app, three Lakebase resources, four schemas and three volumes. Tim checked the portal afterwards: only `information_schema` was left under `bakehouse_dev`, and the old jobs were gone.
 
 ## 5. Challenges met
 
 Each entry: what happened, the cause, the fix, and what to do next time.
 
 - **`bundle destroy` needs an interactive terminal.** Run through Claude Code's `!` prefix it printed "To proceed, use --auto-approve" and deleted nothing, because there is no prompt to answer. Fix: run it in a normal terminal, where it shows the list and asks. Use `bundle summary` first to review what it will remove, and avoid `--auto-approve` for anything you have not reviewed.
+- **`destroy` deleted the schemas together with tables the bundle did not manage.** `gold` held two Designer output tables created outside the bundle, and it still went cleanly with them. Anything a bundle-managed schema holds is lost on destroy, managed or not.
+- **Portal lists lag.** After the destroy the Jobs list kept showing the old jobs for a while, and there is no refresh button. They disappeared after a delay. Do not read a stale list as a failed destroy.
