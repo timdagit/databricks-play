@@ -40,7 +40,7 @@ App environment: `PARAM_BACKEND`, `JOB_TRIGGER=databricks`, `ETL_JOB_ID` and `DA
 - [x] `databricks bundle plan -t dev -p personal` shows no drift, or the drift is written down below
 - [x] Parameter values saved in the app are noted below
 - [ ] Manual post-deploy steps noted below
-- [ ] Deletion list from `databricks bundle destroy -t dev -p personal` reviewed together before confirming
+- [x] Deletion list from `databricks bundle destroy -t dev -p personal` reviewed together before confirming
 
 Drift found: none. `bundle plan` showed zero changes (2026-11-05).
 
@@ -54,6 +54,24 @@ Manual post-deploy steps done so far:
 
 Filled in as each step is done, with the setting used and anything unexpected.
 
+### Planned order
+
+Each step is checked before the next. The ETL is tested first with the Delta parameter backend (`--param-backend delta`), so the jobs can be proven before Lakebase exists.
+
+1. Schemas and volumes (portal or SQL).
+2. Build the wheel and upload it to `ops.artifacts`.
+3. Jobs: `simulator`, `ops_reset`, `bakehouse_etl`, then `daily_run`. Run them with the Delta backend.
+4. Lakebase project, database and Unity Catalog registration. Switch the ETL to Lakebase.
+5. The app, with its resources and environment variables. Then the self-stop grant.
+6. The `review_explorer` task.
+7. Seed with `ops_reset` and `daily_run`, and check the gold tables, the app and `review_explorer`.
+
+### Done
+
+- **Destroy (2026-11-05).** `databricks bundle destroy -t dev -p personal` reported 15 deleted: four jobs, the app, three Lakebase resources, four schemas and three volumes. Tim checks the portal for anything left over.
+
 ## 5. Challenges met
 
 Each entry: what happened, the cause, the fix, and what to do next time.
+
+- **`bundle destroy` needs an interactive terminal.** Run through Claude Code's `!` prefix it printed "To proceed, use --auto-approve" and deleted nothing, because there is no prompt to answer. Fix: run it in a normal terminal, where it shows the list and asks. Use `bundle summary` first to review what it will remove, and avoid `--auto-approve` for anything you have not reviewed.
