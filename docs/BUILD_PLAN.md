@@ -255,3 +255,52 @@ The workstreams below are in a sensible dependency order. Reorder, merge or spli
 ## 13. Comparison
 
 **Outcome:** `docs/backend-comparison.md` compares Lakebase and Delta on latency, cost, local development experience, governance and code complexity. It uses a scripted exerciser in `dev` over 14 virtual days (it was planned for `test`, which is out of scope), and ends with a recommendation that notes when the spec §9 options would change it.
+
+*Where it runs, the hand-built dev or the new `sandbox` target, is decided with workstream 14. The Delta backend (workstream 10) needs a warehouse and app resources, so it is easier to build in the bundle than by hand.*
+
+---
+
+## 14. Rebuild: portal-first dev, bundle from sandbox
+
+**Context:** Tim has chosen to destroy the bundle-deployed dev environment and rebuild it from scratch, following the workflow in spec §9.3. Dev becomes hand-built in the portal from the workspace Git folder. The bundle's first deployment target becomes a new `sandbox`. This replaces the dev part of workstream 3. There's no real data, so nothing needs preserving except what's in Git.
+
+**Outcome**
+
+- **Dev, rebuilt by hand:** dev runs again, built in the portal from the Git folder with no bundle deployment. It produces the same gold outputs, the app works on Lakebase, and the run buttons and idle stop behave as before.
+- **A log:** `docs/dev-rebuild-log.md` records every manual step, setting and parameter value used to build dev.
+- **Captured YAML:** the jobs built by hand in dev are exported to YAML and compared with the existing bundle YAML. Differences are resolved and recorded in `docs/decisions.md`.
+- **Sandbox:** a `bakehouse_sandbox` catalog (Terraform) and a `sandbox` bundle target (development mode), deployed for the first time and seeded.
+
+**Sequence (suggested)**
+
+1. **Pre-destroy check, with Tim.**
+   - Everything is committed and pushed, from both the Mac and the workspace Git folder, including `lakeflow/review_explorer.designer.ipynb`.
+   - Run `databricks bundle plan -t dev` and summarise anything deployed that differs from the YAML. Those differences are about to be lost.
+   - List the manual post-deploy steps that were done: Lakebase grants, app self-stop permission, saved parameter values.
+2. **Destroy (Tim runs it).** `databricks bundle destroy -t dev`. Review the deletion list together first.
+   - Afterwards, check what's left: the catalog, tables created outside the bundle (the Designer output tables, `gold.review_weekly_summary*`), the Git folder.
+   - Drop leftover schemas by hand if a clean start is wanted.
+3. **Rebuild dev in the portal.** Tim does this; Claude Code guides and logs.
+   - Build the `bakehouse_core` wheel from the repo and upload it to a dev volume, for example `/Volumes/bakehouse_dev/ops/artifacts/`.
+   - Create the schemas and volumes, then the jobs (`simulator`, `bakehouse_etl`, `daily_run`, `ops_reset`) in the Jobs UI. Wheel tasks point at the volume wheel. Notebook and Designer tasks point at the Git folder, never at `.bundle/`.
+   - Create the Lakebase project (scale-to-zero at 60 seconds) and run the grant script.
+   - Create the app in the Apps UI from `apps/param_admin` in the Git folder, with the `postgres` and `job` resources. Then grant it self-stop.
+   - Set dev's parameter values on the resources: job parameters, app environment variables.
+   - Seed with `ops_reset` and `daily_run`, then confirm the gold tables, the app and `review_explorer` all work.
+4. **Capture and compare.**
+   - Export each hand-built job with **Edit as YAML** into a scratch folder (not `resources/`).
+   - Diff the exports against the existing `resources/*.yml`. For each difference, decide whether the YAML or the portal version is right. Update `resources/` so environment-specific values are variables.
+   - Note which resources had no export route: app, Lakebase, schemas, warehouse. Those stay hand-written YAML.
+5. **Sandbox.**
+   - **Terraform:** add a `bakehouse-sandbox` container, external location and the `bakehouse_sandbox` catalog. Tim applies.
+   - **`databricks.yml`:** add a `sandbox` target (development mode, as Tim, catalog `bakehouse_sandbox`, schedules paused). Retire the `dev` target; remove it or leave it as a comment.
+   - **Deploy:** `bundle validate`, then `bundle deploy -t sandbox`. Seed with `ops_reset` and `daily_run`. Check the app works and that its name doesn't clash with the hand-built dev app.
+6. **Docs.** Update spec §5.3 (targets), `CLAUDE_CODE_GUIDE.md` (dev is hand-built; the bundle starts at sandbox) and `docs/ops.md`.
+
+**Known traps**
+
+- **Destroy can take data with it.** It removes bundle-managed schemas and volumes along with their tables, and the Lakebase project with the whole parameter history. That's acceptable here; just confirm the list first.
+- **Hand-built dev jobs must point at the Git folder and the uploaded wheel.** If they point at any `.bundle/` path, they'll run stale code or break.
+- **`bundle generate job` only supports notebook-task jobs.** Wheel-task jobs must be captured with **Edit as YAML**.
+- **App names are unique per workspace.** Use the target name in bundle-deployed app names (`${bundle.target}`), and a different name for the hand-built dev app if needed.
+- **Cost.** For a while, two environments run side by side: two apps and two Lakebase projects. Both have 1-minute idle stops; check they're stopped after each session.

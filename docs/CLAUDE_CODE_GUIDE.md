@@ -27,6 +27,7 @@ These are the only hard rules. Everything else is your judgement.
    - If a change would add a standing cost, say so before making it.
 3. **Ask Tim first** before:
    - anything that deploys to or runs in `test` or `prod`
+   - deploying the bundle to `dev` once workstream 14 has started (dev is hand-built)
    - `terraform apply` or `destroy`, or any `import`
    - deleting data or resources outside `dev`
    - force-pushing, or changing repo settings or secrets
@@ -42,7 +43,7 @@ These are the only hard rules. Everything else is your judgement.
 | Existing | Azure resource group, Databricks workspace (Premium, Unity Catalog), one all-purpose cluster, GitHub repo, gitleaks on the Mac |
 | Sample data range | `samples.bakehouse.sales_transactions` covers 1–17 May 2024 (17 days) |
 | CI auth | Service principal OAuth secret held in GitHub Environments (`test`, `prod`) |
-| Run identity | `dev` runs as Tim. `test` and `prod` deploy as, and run as, their service principal. |
+| Environments | From workstream 14: `dev` is built by hand in the portal (not deployed by the bundle). `sandbox` is the bundle's first target, in development mode, as Tim. `test` and `prod` deploy as, and run as, their service principal. |
 
 ## Working style
 

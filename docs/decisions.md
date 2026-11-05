@@ -153,3 +153,20 @@ Departures from `SPEC.md` and `CLAUDE_CODE_GUIDE.md`, and choices made along the
 - **Run buttons.** Rerun ETL started a real `bakehouse_etl` run from the app, the status line showed it running past the 8 seconds a simulated run takes, and its link opened the run page. So the job ids from the app's job resources, `CAN_MANAGE_RUN`, and the SDK trigger all work.
 - **Idle stop.** After the app was left alone, it stopped itself (its compute went to `Stopping compute associated with app`, with no manual stop). The earlier failures were fixed by passing the app's name explicitly and granting its service principal `CAN_MANAGE` on itself with `scripts/grant_app_self_manage.sh`. Which of the two was the cause is not known, because both were changed together, and the failed attempt's error text was lost with the logs. Keep both.
 - **Logs of a stopped app cannot be read** (`websocket: bad handshake (HTTP 503)`). Capture anything needed from `apps logs` while the app is running.
+
+## 2026-11-04: Designer and notebook findings (workstream 11)
+
+- **Designer Source and Output operators cannot take parameters** in this workspace. Their Parameters view only offers Disabled. So `review_explorer` reads franchises from `bakehouse_dev` as a fixed table, and its output table is fixed too. The `catalog` parameter only reaches the SQL operator that reads reviews. Fine while the build is dev-only; recorded in spec 3.4.
+- **A saved GPU preference breaks the job.** The Designer notebook's metadata kept `computePreferences.hardware.accelerator: A10`, and the job run failed on it (it failed, so it did not bill GPU compute). Clearing the preference in the notebook fixed it. If the selector cannot be cleared, re-create the flow.
+- **A job task cannot carry its own tags.** The bundle schema has tags at job level only, so `review_explorer` has `component=designer` in its description instead.
+- **`bakehouse_core` reaches notebooks two ways, both proven:** `%pip install` of the wheel from the `ops.artifacts` volume (the bundle uploads it there through `workspace.artifact_path`), or the repo's `src` folder on `sys.path` from a Git folder. Notebooks 02 and 03 use the wheel.
+- **Notebook 01 uses a session variable, not a widget.** `CREATE WIDGET` is not supported on a SQL warehouse, and a warehouse notebook parameter is not saved in the `.sql` file.
+- **`supplier_mix` is skipped** (Tim, 2026-11-05, short of time). One Designer prep was enough to show the pattern.
+
+## 2026-11-05: move bundles down the workflow (workstream 14)
+
+- **Decision (Tim, after discussion with the Claude app).** Dev will be destroyed and rebuilt by hand in the portal, from the workspace Git folder, with no bundle deployment. The bundle's first target becomes a new `sandbox` (development mode, as Tim, catalog `bakehouse_sandbox`), with `test` and `prod` above it as the spec already describes. Spec 9.3 describes the workflow and build plan workstream 14 the steps.
+- **Why.** In most real projects development starts in the IDE and the workspace, and the bundle takes over when work leaves dev. This build was code-first, so even dev came from the bundle. Rebuilding by hand shows what the portal route costs and what has to be captured back into YAML.
+- **Rules that change.** The guide now asks Tim before any bundle deployment to `dev` once workstream 14 has started. Existing `dev` resources, the wheel on the `ops.artifacts` volume and the Designer files are what the rebuild starts from.
+- **Not yet changed** (done when workstream 14 starts): the `dev` target in `databricks.yml`, `CLAUDE.md`'s targets rule and the README deploy commands. They describe the current bundle-deployed dev until then.
+- **Open.** Workstream 12 stays out of scope, so `test` and `prod` are still not built. Where workstreams 10 and 13 run (hand-built dev, or `sandbox`) is undecided.

@@ -121,7 +121,7 @@ Lakeflow Designer is generally available. Each visual data prep is stored as `<n
 - `review_explorer.designer.ipynb`: joins silver reviews and franchises into a review summary by franchise and week.
 - `supplier_mix.designer.ipynb`: joins suppliers, franchises and sales into an ingredient share per supplier.
 
-Designer parameters (`catalog`) are overridden per bundle target. Rule: edit these files only on the canvas. Code changed outside the editor locks the step until you choose **Regenerate code**.
+Designer parameters (`catalog`) are overridden per bundle target. Finding (04/11/2026): in this workspace the Source and Output operators only offer **Disabled** in their Parameters view, not the documented Table/Catalog fields. So parameters currently reach a flow only through SQL operators (`IDENTIFIER(:catalog || '.silver.reviews')`), and Output tables are fixed to `bakehouse_dev`. That's fine while the build is dev-only. Rule: edit these files only on the canvas. Code changed outside the editor locks the step until you choose **Regenerate code**.
 
 ### 3.5 Notebooks
 
@@ -296,6 +296,7 @@ bakehouse-dbx-poc/
 | `test` | production | `sp-bakehouse-test` | `sp-bakehouse-test` | `bakehouse_test` | paused |
 | `prod` | production | `sp-bakehouse-prod` | `sp-bakehouse-prod` | `bakehouse_prod` | daily |
 
+- **Change planned (build workstream 14):** dev is rebuilt by hand in the portal (§9.3), and the bundle gets a new `sandbox` target (development mode, as Tim, catalog `bakehouse_sandbox`). That target replaces `dev` as the bundle's first target.
 - **Deploy and run identity:** when the deploying identity differs from `run_as`, bundles only support jobs and pipelines. The app and Lakebase resources therefore require that CI deploys as the same SP that runs the resources.
 - **Workspace host:** supplied through `DATABRICKS_HOST`, never written in `databricks.yml`, because the repo is public.
 - **Tags:** `presets.tags` sets `project`, `env: ${bundle.target}` and `owner` on everything the bundle deploys (section 6.3).
@@ -504,6 +505,7 @@ The phases follow the workstreams in `docs/BUILD_PLAN.md`, the build guide for C
 - Exact bundle field names for usage policies on jobs and apps.
 - Python version of the Databricks Apps runtime vs the serverless job environment.
 - Whether Designer parameters can take values from job parameters, which would let the review threshold come from the parameter store.
+- When parameterised Source/Output fields reach this workspace. Until then, Designer outputs are fixed to one catalog.
 - Whether to use one Lakebase project per target or one project with a branch per target. A branch per target is more elegant, but bundle support needs checking.
 
 ---
@@ -549,6 +551,38 @@ If the real environment already runs an all-purpose cluster for the hours when t
 - **Trade-offs:** if the cluster is down, the app waits minutes for it to start. All-purpose compute has a higher DBU rate than jobs compute. Spark adds latency to single-row reads and writes. App traffic shares capacity with other users of the cluster.
 - **Requirements:** a Unity Catalog-enabled access mode, and a cluster policy that lets the app identity attach.
 - **Implementation:** a third `ParamRepository` that uses a Spark session, selected with `PARAM_BACKEND=delta-connect`. The data model is unchanged.
+
+### 9.3 Development workflow: portal-first dev, bundles from sandbox up
+
+This PoC is code-first: Claude Code wrote the code and the YAML up front, so even dev is deployed from the bundle. In most real projects, development starts in an IDE and the workspace, with Git in between. The bundle only takes over when work leaves dev.
+
+| Environment | How resources get there | Who changes it |
+|---|---|---|
+| **dev** | By hand in the portal, from code in a workspace Git folder. No bundle deployment. | Developers |
+| **sandbox** | First bundle deployment (development mode). Integration and rough testing. | Developers, through the bundle |
+| **test, prod** | Bundle deployments from CI only (production mode, run as a service principal) | CI |
+
+**What lives in Git**
+
+- **Reusable code reaches Git directly.** This covers packages written in an IDE, plus notebooks, Designer flows and SQL edited in a workspace Git folder.
+- **Resource definitions don't.** A job, warehouse, app or permission created from the normal portal pages is stored in the Databricks service, not as a file. It reaches Git in one of three ways:
+  1. **Author it in the bundle editor.** Open the Git folder in the bundle editor and add a new job definition. Edits made in the UI are written back to the YAML (Public Preview; jobs and pipelines only).
+  2. **Export it** with the job's **Edit as YAML** and copy that into `resources/`. This works for any task type, including Python wheel tasks.
+  3. **Capture it with `databricks bundle generate … --bind`**. This works for jobs with notebook tasks only, plus pipelines, dashboards and apps.
+- **Some resources are always written as YAML by hand:** warehouses, Lakebase projects, schemas, volumes and permissions.
+
+**Parameters**
+
+- **Reusable definitions use variables** for anything environment-specific: `${var.catalog}`, `${var.warehouse_id}`, `${var.run_as}`.
+- **In dev, the values are whatever is set on the resource in the workspace.** They never leave dev.
+- **At capture, swap literals for variables.** Replacing dev's literal values with variables is the one manual step in promotion. Consistent naming keeps it small.
+- **Sandbox and higher get values at deploy time:** a target's `variables` block for non-secret defaults, or `--var` / `BUNDLE_VAR_<name>` from the CI environment. Secrets never go in YAML. They live in GitHub Environment secrets or Databricks secret scopes.
+
+**Rules**
+
+- Once a resource is captured, the YAML is the master for sandbox and above. Later dev changes are captured again, and the variable substitutions are re-checked in the diff.
+- Never point a bundle target at the same catalog or names as hand-made dev resources. Separate catalogs (`bakehouse_dev`, `bakehouse_sandbox`) avoid clashes.
+- Dev jobs reference code in the Git folder (or a wheel built from it), never the copies a bundle deploys under `.bundle/`.
 
 ---
 
