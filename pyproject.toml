@@ -44,6 +44,9 @@ packages = ["src/bakehouse_core"]
 line-length = 100
 target-version = "py312"
 src = ["src", "tests"]
+# Designer files are written only by the canvas (ruff would lint and reformat the notebook JSON),
+# and hello_world is a scratch file for portal job tests.
+extend-exclude = ["lakeflow", "src/hello_world"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
