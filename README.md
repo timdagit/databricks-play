@@ -79,6 +79,17 @@ sys.path.append(os.path.abspath("../src"))
 
 The volume has to exist before a deploy can upload to it, so it was created by an earlier deploy than the one that set `artifact_path`. The notebook's install path names the catalog and the wheel version, so it needs editing if either changes. A notebook imported as a single file has neither the volume install nor the `src` folder, so it cannot import the package.
 
+## Schema names: why development mode is off
+
+By default a bundle target in `mode: development` prefixes what it deploys, so a schema called `silver` becomes `dev_<user>_silver`. Databricks does this so that several developers can deploy into one shared dev workspace without overwriting each other.
+
+This project switches that off, so schema names are always `bronze`, `silver`, `gold` and `ops`, in every environment:
+
+- **How:** no bundle target sets `mode: development`. The data bundle (`dab-data/`) never uses it, on any target. An empty `presets.name_prefix` does not work as an alternative, because Databricks ignores an empty value. Targets set the one preset that matters by hand, `trigger_pause_status: PAUSED`, so schedules stay paused.
+- **Why:** the code, the jobs, the volume paths and the app all refer to the schemas by their fixed names, and a Designer source cannot take a parameter at all. A per-user prefix would have to be threaded through every table and path. The schemas also hold pipeline state (the virtual clock, the run log, checkpoints), so a personal schema would really be a personal environment.
+- **Separating environments:** by catalog, through the `catalog` variable (`bakehouse_dev`, `bakehouse_sandbox` and so on). Nothing stops someone creating their own catalog or tables for rough work and pointing `catalog` at it. The catalogs themselves are created in az-inf, not in the bundle.
+- **Other effects:** with the mode off, jobs and apps are not auto-prefixed either, so they are named explicitly (`..._${bundle.target}`), and settings that development mode would have applied, such as concurrent run limits, are set by hand where needed. Compute bundles for sandbox may still use development mode, because only job names get prefixed there.
+
 ## Variables, deploy and destroy
 
 Commands use the `personal` Databricks CLI profile (`-p personal`), and no workspace identifiers are stored in the repo.
