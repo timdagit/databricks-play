@@ -1,3 +1,11 @@
+# The compute bundle: jobs, the app, Lakebase and the Designer tasks. The schemas and volumes it
+# uses come from the data bundle (../dab-data), which has to be deployed first.
+#
+# Dev compute is hand-built in the portal and does not use this bundle. It is the reference the
+# hand-built jobs are compared with, and the source for sandbox and above. Run the commands from
+# this folder:
+#   cd dab-compute
+#   databricks bundle validate -t dev -p personal
 bundle:
   name: bakehouse
 
@@ -5,24 +13,32 @@ include:
   - resources/*.yml
 
 # Upload the built wheel to a Unity Catalog volume instead of the bundle's workspace folder, so a
-# notebook can `%pip install` it from a known place. The volume (resources/schemas.yml) has to
-# exist before a deploy can use it, so it was created by an earlier deploy.
+# notebook can `%pip install` it from a known place. The volume (dab-data/resources/schemas.yml)
+# has to exist before a deploy can use it, which the data bundle takes care of.
 workspace:
   artifact_path: /Volumes/${var.catalog}/ops/artifacts
 
+# The package and the app live in the repo root, one level above this bundle, so the build runs
+# there (`path: ..`). Paths in `files` are relative to this folder.
 artifacts:
   bakehouse_core:
     type: whl
-    path: .
+    path: ..
     # Also copies bakehouse_core into the app folder (the app only gets its own folder).
     build: uv build --wheel && uv run --no-project python scripts/stage_app.py
     files:
-      - source: dist/*.whl
+      - source: ../dist/*.whl
 
-# The staged copy is gitignored, so it has to be named here to be uploaded.
+# A bundle only syncs its own folder by default. The app and the Designer files sit outside it,
+# so they are listed here, and the sync root becomes the repo root.
 sync:
+  paths:
+    - .
+    - ../apps
+    - ../lakeflow
+  # The staged copy is gitignored, so it has to be named here to be uploaded.
   include:
-    - apps/param_admin/bakehouse_core/**
+    - ../apps/param_admin/bakehouse_core/**
 
 variables:
   catalog:

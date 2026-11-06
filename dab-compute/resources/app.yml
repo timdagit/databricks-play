@@ -1,5 +1,5 @@
 # The parameter admin app on Databricks Apps (spec 4.4). It runs as its own service principal.
-# Deploying creates it stopped, so nothing bills until you start it:
+# Deploying creates it stopped, so nothing bills until you start it (run from dab-compute/):
 #   databricks bundle run param_admin -t dev -p personal
 # and stop it again when finished:
 #   databricks apps stop bakehouse-param-admin-dev -p personal
@@ -8,7 +8,7 @@ resources:
     param_admin:
       name: bakehouse-param-admin-${bundle.target}
       description: Edit the Bakehouse business parameters and start ETL runs.
-      source_code_path: ../apps/param_admin
+      source_code_path: ../../apps/param_admin
       compute_size: MEDIUM
       lifecycle:
         started: false

@@ -26,7 +26,7 @@ resources:
           spec:
             environment_version: "5"
             dependencies:
-              - ../dist/*.whl
+              - ../../dist/*.whl
       tasks:
         - task_key: load_params
           environment_key: default
@@ -89,7 +89,7 @@ resources:
             - task_key: gold_build
           environment_key: default
           notebook_task:
-            notebook_path: ../lakeflow/review_explorer.designer.ipynb
+            notebook_path: ../../lakeflow/review_explorer.designer.ipynb
             base_parameters:
               catalog: ${var.catalog}
 
