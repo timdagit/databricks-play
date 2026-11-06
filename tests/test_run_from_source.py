@@ -10,7 +10,9 @@ ROOT = Path(__file__).resolve().parents[1]
 @pytest.fixture
 def init():
     # jobs/ is a plain folder, not a package, so load the file by path.
-    spec = importlib.util.spec_from_file_location("jobs_init", ROOT / "jobs" / "init.py")
+    spec = importlib.util.spec_from_file_location(
+        "run_from_source", ROOT / "jobs" / "run_from_source.py"
+    )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

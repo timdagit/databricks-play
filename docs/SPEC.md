@@ -592,7 +592,7 @@ This PoC is code-first: Claude Code wrote the code and the YAML up front, so eve
 
 **Code in dev and above**
 
-- **Dev runs from source.** Jobs are `spark_python_task`s that run `jobs/init.py` from the Git folder, with the job name first and then its parameters. Their environment lists the dependencies (for example `sqlalchemy`) because there is no wheel to declare them.
+- **Dev runs from source.** Jobs are `spark_python_task`s that run `jobs/run_from_source.py` from the Git folder, with the job name first and then its parameters. Their environment lists the dependencies (for example `sqlalchemy`) because there is no wheel to declare them.
 - **Sandbox and above run the wheel**, through `python_wheel_task` entry points, uploaded to the `ops.artifacts` volume by `workspace.artifact_path`. Notebooks install it with `%pip install` from the volume.
 - **Capture is a conversion,** not a copy: task type, code path and dependencies all differ between dev and sandbox, as well as the variables.
 

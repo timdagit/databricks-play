@@ -283,7 +283,7 @@ The workstreams below are in a sensible dependency order. Reorder, merge or spli
    - Drop leftover schemas by hand if a clean start is wanted.
 3. **Rebuild dev in the portal.** Tim does this; Claude Code guides and logs.
    - Deploy the data bundle (`dab-data/`): the schemas and volumes, including `ops.artifacts`. It is the one part of dev that comes from a bundle.
-   - Create the jobs (`simulator`, `bakehouse_etl`, `daily_run`, `ops_reset`) in the Jobs UI. Each runs `jobs/init.py` from the Git folder as a `spark_python_task`, with the job name first and then its parameters, and lists `sqlalchemy` in its environment. Notebook and Designer tasks point at the Git folder, never at `.bundle/`.
+   - Create the jobs (`simulator`, `bakehouse_etl`, `daily_run`, `ops_reset`) in the Jobs UI. Each runs `jobs/run_from_source.py` from the Git folder as a `spark_python_task`, with the job name first and then its parameters, and lists `sqlalchemy` in its environment. Notebook and Designer tasks point at the Git folder, never at `.bundle/`.
    - The wheel is not used in dev, except where something cannot import from `src` (the app, probably).
    - Create the Lakebase project (scale-to-zero at 60 seconds) and run the grant script.
    - Create the app in the Apps UI from `apps/param_admin` in the Git folder, with the `postgres` and `job` resources. Then grant it self-stop.

@@ -3,7 +3,7 @@
 In dev a job is a `spark_python_task` that runs this file from the workspace Git folder, with the
 job name first and then the job's own parameters:
 
-    init.py silver-build --catalog bakehouse_dev --run-id {{job.run_id}}
+    run_from_source.py silver-build --catalog bakehouse_dev --run-id {{job.run_id}}
 
 Sandbox and above run the built wheel through `python_wheel_task` entry points instead. The names
 here are those entry points without the `bakehouse-` prefix, and a test keeps the two in step.
@@ -31,7 +31,7 @@ JOBS = {
 def main(argv: list[str] | None = None) -> None:
     argv = sys.argv[1:] if argv is None else argv
     if not argv or argv[0] not in JOBS:
-        raise SystemExit(f"usage: init.py <{'|'.join(JOBS)}> [job arguments]")
+        raise SystemExit(f"usage: run_from_source.py <{'|'.join(JOBS)}> [job arguments]")
 
     # The package lives in ../src, which is not on the path when this file is run as a script.
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
