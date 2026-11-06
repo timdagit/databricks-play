@@ -1,0 +1,6 @@
+# Dev only: the serverless environment for the hand-built jobs, which run from source and so
+# do not get the dependencies of the bakehouse_core wheel. Keep the list in step with
+# `dependencies` in pyproject.toml. Sandbox and above install the wheel and do not use this.
+environment_version: '5'
+dependencies:
+  - sqlalchemy>=2.1.6
