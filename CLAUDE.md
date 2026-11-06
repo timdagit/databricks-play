@@ -39,10 +39,12 @@ deploy. Record each departure in `docs/decisions.md`.
 ## Where things live
 - Two bundles (spec §9.3). `dab-data/` holds the schemas and volumes and is
   deployed to every environment, dev included. The compute bundle (jobs, app,
-  Lakebase, Designer tasks) is still at the repo root as `bundle.name:
-  bakehouse` and moves to `dab-compute/` when sandbox is built. Dev compute is
+  Lakebase, Designer tasks) is in `dab-compute/` (`bundle.name: bakehouse`).
+  Run bundle commands from inside each bundle folder. Dev compute is
   hand-built from the workspace Git folder and runs code from source
-  (`jobs/run_from_src.py`); sandbox and above run the wheel.
+  (`jobs/run_from_src.py`, with `jobs/base_environment.yml` listing its
+  dependencies); the compute bundle is its reference YAML and is first deployed
+  at sandbox, which runs the wheel.
 - **Infrastructure is all in az-inf** (`/Users/timda/HOME/GIT/az-inf`, with
   its own CLAUDE.md and skill). Do not create Terraform in this repo. az-inf
   already provides the workspace, ADLS storage, access connector, Unity
@@ -86,9 +88,10 @@ deploy. Record each departure in `docs/decisions.md`.
   placeholder default (`catalog`, `warehouse_id`, etc.), referenced as
   `${var.catalog}`. Real values come from `--var`, `BUNDLE_VAR_<name>`, the
   gitignored `databricks.local.yml`, or a placeholder-only target override.
-- Targets: `dev` is the default (`mode: development`) and the one that
-  matters. Keep `test` and `prod` minimal and valid per the spec, but don't
-  invest in them until Tim asks.
+- Targets: development mode is off everywhere (it prefixes schema names).
+  The compute bundle keeps a `dev` target only so `validate` works; `sandbox`
+  is its first deployed target. Don't invest in `test` and `prod` until Tim
+  asks.
 - In dev mode, check what actually gets prefixed (schemas, apps, workspace
   paths) and set `presets` deliberately so names match the spec. Record the
   result in `docs/decisions.md`.

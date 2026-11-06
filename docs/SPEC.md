@@ -587,7 +587,7 @@ This PoC is code-first: Claude Code wrote the code and the YAML up front, so eve
 **Two bundles (decided 2026-11-05)**
 
 - **`dab-data/`** holds the schemas and volumes, including the `ops.artifacts` volume for the wheel. Unity Catalog objects cannot be exported from the portal into Git, so they always come from a bundle, in every environment including dev. It never uses development mode, because that would prefix schema names; environments are separated by catalog instead. It is deployed first.
-- **`dab-compute/`** holds jobs, the app, Lakebase and the Designer tasks. It starts at sandbox. Until then the compute bundle stays at the repo root, where its YAML is the reference that the hand-built dev jobs are compared with.
+- **`dab-compute/`** holds jobs, the app, Lakebase and the Designer tasks. It is first deployed at sandbox. Until then its YAML is the reference that the hand-built dev jobs are compared with.
 - **Why separate:** compute can be rebuilt or destroyed without touching data. The reverse is not true: destroying the data bundle deletes every table in its schemas, including tables a job or a Designer flow created.
 
 **Code in dev and above**

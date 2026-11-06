@@ -94,6 +94,8 @@ This project switches that off, so schema names are always `bronze`, `silver`, `
 
 Commands use the `personal` Databricks CLI profile (`-p personal`), and no workspace identifiers are stored in the repo.
 
+There are two bundles, and each command runs from inside its folder: `cd dab-data` for the schemas and volumes (deploy this first), `cd dab-compute` for jobs, the app and Lakebase. In `dev` the compute is hand-built in the portal instead (see `docs/dev-rebuild-log.md`), so the compute commands below apply from `sandbox` upwards, and `-t dev` in them is a leftover that this README will lose when sandbox is built.
+
 Variables (defaults are placeholders, override with `--var` or `BUNDLE_VAR_<name>`):
 
 | Variable | Meaning |

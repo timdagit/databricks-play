@@ -291,12 +291,12 @@ The workstreams below are in a sensible dependency order. Reorder, merge or spli
    - Seed with `ops_reset` and `daily_run`, then confirm the gold tables, the app and `review_explorer` all work.
 4. **Capture and compare.**
    - Export each hand-built job with **Edit as YAML** into a scratch folder (not `resources/`).
-   - Diff the exports against the existing `resources/*.yml`. For each difference, decide whether the YAML or the portal version is right. Update `resources/` so environment-specific values are variables.
+   - Diff the exports against the existing `dab-compute/resources/*.yml`. For each difference, decide whether the YAML or the portal version is right. Update `dab-compute/resources/` so environment-specific values are variables.
    - Note which resources had no export route: app, Lakebase, schemas, warehouse. Those stay hand-written YAML.
 5. **Sandbox.**
    - **Terraform:** add a `bakehouse-sandbox` container, external location and the `bakehouse_sandbox` catalog. Tim applies.
-   - **Layout:** move the compute bundle into `dab-compute/`. Its relative paths change, and the app, notebooks and `src` sit outside its root, so it needs `sync.paths`. Bundle commands are then run from inside each folder. Sandbox compute uses wheel tasks again.
-   - **`databricks.yml`:** add a `sandbox` target (development mode, as Tim, catalog `bakehouse_sandbox`, schedules paused). Retire the `dev` target; remove it or leave it as a comment.
+   - **Layout:** done early (2026-11-06): the compute bundle moved into `dab-compute/`, with its relative paths changed and `sync.paths` added for the app and Designer files. It has not been deployed since, so those paths are unproven until the first sandbox deploy. Bundle commands are run from inside each folder. Sandbox compute uses wheel tasks again.
+   - **`dab-compute/databricks.yml`:** add a `sandbox` target (development mode, as Tim, catalog `bakehouse_sandbox`, schedules paused). Retire the `dev` target; remove it or leave it as a comment.
    - **Deploy:** `bundle validate`, then `bundle deploy -t sandbox`. Seed with `ops_reset` and `daily_run`. Check the app works and that its name doesn't clash with the hand-built dev app.
 6. **Docs.** Update spec §5.3 (targets), `CLAUDE_CODE_GUIDE.md` (dev is hand-built; the bundle starts at sandbox) and `docs/ops.md`.
 
