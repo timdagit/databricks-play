@@ -1,4 +1,6 @@
 import importlib.util
+import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
@@ -37,6 +39,37 @@ def test_runs_the_named_job_with_the_remaining_arguments(init, monkeypatch):
 def test_unknown_or_missing_job_exits_with_usage(init, argv):
     with pytest.raises(SystemExit, match="usage"):
         init.main(argv)
+
+
+def test_callbacks_unpickle_in_a_process_without_src(init, tmp_path):
+    # What foreachBatch does: pickle a handler here, load it in a fresh worker that has no `src`.
+    from pyspark import cloudpickle
+
+    import bakehouse_core.jobs.silver_build as silver_build
+
+    stats_dir = str(tmp_path / "stats")
+
+    def handle(batch_id):
+        silver_build.write_batch_stats(stats_dir, "sales", batch_id, {"rows_in": 1})
+
+    init.pickle_package_by_value()
+    try:
+        blob = cloudpickle.dumps(handle)
+    finally:
+        cloudpickle.unregister_pickle_by_value(__import__("bakehouse_core"))
+    pickle_file = tmp_path / "handle.pkl"
+    pickle_file.write_bytes(blob)
+
+    worker = (
+        "import pickle, sys\n"
+        f"sys.path[:] = [p for p in sys.path if {str(ROOT / 'src')!r} not in p]\n"
+        f"pickle.loads(open({str(pickle_file)!r}, 'rb').read())(7)\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-I", "-c", worker], capture_output=True, text=True, cwd=tmp_path
+    )
+    assert result.returncode == 0, result.stderr
+    assert (tmp_path / "stats" / "sales-000007.json").exists()
 
 
 def test_finds_src_when_run_the_way_serverless_runs_it():

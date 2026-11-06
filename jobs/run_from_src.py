@@ -34,7 +34,23 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(f"usage: run_from_src.py <{'|'.join(JOBS)}> [job arguments]")
 
     sys.path.insert(0, str(src_dir()))
-    importlib.import_module(JOBS[argv[0]]).main(argv[1:])
+    job = importlib.import_module(JOBS[argv[0]])
+    pickle_package_by_value()
+    job.main(argv[1:])
+
+
+def pickle_package_by_value() -> None:
+    """Make Python callbacks that Spark runs in another process carry `bakehouse_core` with them.
+
+    `foreachBatch` (silver_build) pickles its handler and a fresh worker process unpickles it. By
+    default the pickle only says "import bakehouse_core", and the worker has no `src` on its path.
+    The wheel in sandbox and above is installed everywhere, so only this launcher needs it.
+    """
+    from pyspark import cloudpickle
+
+    import bakehouse_core
+
+    cloudpickle.register_pickle_by_value(bakehouse_core)
 
 
 def src_dir() -> Path:
