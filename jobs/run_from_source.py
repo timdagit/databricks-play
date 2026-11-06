@@ -33,9 +33,17 @@ def main(argv: list[str] | None = None) -> None:
     if not argv or argv[0] not in JOBS:
         raise SystemExit(f"usage: run_from_source.py <{'|'.join(JOBS)}> [job arguments]")
 
-    # The package lives in ../src, which is not on the path when this file is run as a script.
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+    sys.path.insert(0, str(src_dir()))
     importlib.import_module(JOBS[argv[0]]).main(argv[1:])
+
+
+def src_dir() -> Path:
+    """The repo's `src` folder, which is not on the path when this file is run as a script.
+
+    Serverless runs the file with `exec(compile(source, filename, "exec"))`, so `__file__` is not
+    defined there. The code object still carries the real path, which works either way.
+    """
+    return Path(main.__code__.co_filename).resolve().parents[1] / "src"
 
 
 if __name__ == "__main__":

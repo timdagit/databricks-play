@@ -28,7 +28,7 @@ App environment: `PARAM_BACKEND`, `JOB_TRIGGER=databricks`, `ETL_JOB_ID` and `DA
 
 ## 2. Challenges expected before starting
 
-- **Dev runs from source, so each job passes its name first to `jobs/run_from_source.py`.** The script finds `src` through its own location (`__file__`). That is assumed to work on serverless and is checked on the first run.
+- **Dev runs from source, so each job passes its name first to `jobs/run_from_source.py`.** The script finds `src` from its own location. `__file__` does not exist on serverless, which runs the file with `exec(compile(...))` (first run: `NameError`), so it uses `main.__code__.co_filename` instead, which keeps the real path. A test runs the file that way.
 
 - **The app needs `bakehouse_core`, and its staged copy is gitignored.** The bundle copies the package into `apps/param_admin/` at deploy. A Git folder has no such copy. Options to try: the wheel as an app dependency, or committing the copy.
 - **The Unity Catalog registration of Lakebase** has no known portal route yet.

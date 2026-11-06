@@ -39,3 +39,12 @@ def test_runs_the_named_job_with_the_remaining_arguments(init, monkeypatch):
 def test_unknown_or_missing_job_exits_with_usage(init, argv):
     with pytest.raises(SystemExit, match="usage"):
         init.main(argv)
+
+
+def test_finds_src_when_run_the_way_serverless_runs_it():
+    # Serverless execs the compiled source, so `__file__` is not defined.
+    path = ROOT / "jobs" / "run_from_source.py"
+    namespace = {"__name__": "not_main"}
+    exec(compile(path.read_text(), str(path), "exec"), namespace)
+    assert "__file__" not in namespace
+    assert namespace["src_dir"]() == ROOT / "src"
