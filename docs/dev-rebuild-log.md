@@ -12,9 +12,9 @@ This file records every manual step, setting and challenge, so the rebuild can b
 | Schemas `bronze`, `silver`, `gold`, `ops` | `dab-data/resources/schemas.yml` | The data bundle, not the portal | Comments are in the YAML. Tables created outside the bundle (Designer outputs) may block a schema delete |
 | Volumes `bronze.raw`, `ops.checkpoints`, `ops.artifacts` | `dab-data/resources/schemas.yml` | The data bundle, not the portal | All managed volumes |
 | The `bakehouse_core` wheel | built by the bundle artifact step | Not used by dev jobs, which run from source. Still needed for the app, probably, and from sandbox up | Never install it from a `.bundle/` path |
-| Job `simulator` | `resources/jobs.yml` | Jobs UI | Serverless; `spark_python_task` running `jobs/run_from_source.py simulate ...` from the Git folder, environment listing `sqlalchemy`; parameters `days`, `mode`, `scenarios`, `triggered_by`; one concurrent run; timeout from `job_timeout_seconds` |
-| Job `ops_reset` | `resources/jobs.yml` | Jobs UI | `jobs/run_from_source.py reset ...`; parameters `level`, `confirm`, `requested_by`; the confirm value must equal the target name |
-| Job `bakehouse_etl` | `resources/etl.yml` | Jobs UI | Tasks `load_params`, `silver_build`, `gold_build` (`jobs/run_from_source.py` with `load-params`, `silver-build`, `gold-build`) and `review_explorer` (notebook task); parameters `mode`, `from_date`, `triggered_by`; duration health rule; params passed as `--catalog`, `--param-backend`, `--params-catalog` |
+| Job `simulator` | `resources/jobs.yml` | Jobs UI | Serverless; `spark_python_task` running `jobs/run_from_src.py simulate ...` from the Git folder, environment listing `sqlalchemy`; parameters `days`, `mode`, `scenarios`, `triggered_by`; one concurrent run; timeout from `job_timeout_seconds` |
+| Job `ops_reset` | `resources/jobs.yml` | Jobs UI | `jobs/run_from_src.py reset ...`; parameters `level`, `confirm`, `requested_by`; the confirm value must equal the target name |
+| Job `bakehouse_etl` | `resources/etl.yml` | Jobs UI | Tasks `load_params`, `silver_build`, `gold_build` (`jobs/run_from_src.py` with `load-params`, `silver-build`, `gold-build`) and `review_explorer` (notebook task); parameters `mode`, `from_date`, `triggered_by`; duration health rule; params passed as `--catalog`, `--param-backend`, `--params-catalog` |
 | Job `daily_run` | `resources/etl.yml` | Jobs UI | `run_job_task`s for the simulator and the ETL; parameters `days`, `scenarios`, `etl_mode`, `triggered_by`; daily schedule, paused. A parent's parameters are pushed down to child jobs by name |
 | Lakebase project `bakehouse-params-dev` | `resources/lakebase.yml` | Lakebase UI | Postgres 16, 0.5 to 2 CU, suspend after 60 seconds, 2 days history, tags |
 | Lakebase database `bakehouse` | `resources/lakebase.yml` | Lakebase UI or SQL | Branch `production`. Its owner must be an existing role |
@@ -28,7 +28,7 @@ App environment: `PARAM_BACKEND`, `JOB_TRIGGER=databricks`, `ETL_JOB_ID` and `DA
 
 ## 2. Challenges expected before starting
 
-- **Dev runs from source, so each job passes its name first to `jobs/run_from_source.py`.** The script finds `src` from its own location. `__file__` does not exist on serverless, which runs the file with `exec(compile(...))` (first run: `NameError`), so it uses `main.__code__.co_filename` instead, which keeps the real path. A test runs the file that way.
+- **Dev runs from source, so each job passes its name first to `jobs/run_from_src.py`.** The script finds `src` from its own location. `__file__` does not exist on serverless, which runs the file with `exec(compile(...))` (first run: `NameError`), so it uses `main.__code__.co_filename` instead, which keeps the real path. A test runs the file that way.
 
 - **The app needs `bakehouse_core`, and its staged copy is gitignored.** The bundle copies the package into `apps/param_admin/` at deploy. A Git folder has no such copy. Options to try: the wheel as an app dependency, or committing the copy.
 - **The Unity Catalog registration of Lakebase** has no known portal route yet.

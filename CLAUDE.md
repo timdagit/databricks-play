@@ -42,7 +42,7 @@ deploy. Record each departure in `docs/decisions.md`.
   Lakebase, Designer tasks) is still at the repo root as `bundle.name:
   bakehouse` and moves to `dab-compute/` when sandbox is built. Dev compute is
   hand-built from the workspace Git folder and runs code from source
-  (`jobs/run_from_source.py`); sandbox and above run the wheel.
+  (`jobs/run_from_src.py`); sandbox and above run the wheel.
 - **Infrastructure is all in az-inf** (`/Users/timda/HOME/GIT/az-inf`, with
   its own CLAUDE.md and skill). Do not create Terraform in this repo. az-inf
   already provides the workspace, ADLS storage, access connector, Unity
