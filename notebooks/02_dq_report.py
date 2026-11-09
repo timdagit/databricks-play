@@ -8,17 +8,17 @@
 # MAGIC Run the simulator with `scenarios=duplicates;null_spike;late_files` and then the ETL to give
 # MAGIC it something to show. Run it on serverless compute. It only reads tables.
 # MAGIC
-# MAGIC The log parsing comes from the `bakehouse_core` wheel, which `bundle deploy` uploads to the
-# MAGIC `bakehouse_dev.ops.artifacts` volume. There is no fallback: if the install fails, so does the
-# MAGIC notebook. `%pip` cannot take a variable, so the catalog in the path is written out.
+# MAGIC The code comes from `bakehouse_core`, imported from the repo's `src` folder. Open this
+# MAGIC notebook from the workspace Git folder, so that `../src` exists.
 
 # COMMAND ----------
 
-# MAGIC %pip install /Volumes/bakehouse_dev/ops/artifacts/.internal/bakehouse_core-0.1.0-py3-none-any.whl
+# Same as the dev jobs: run the package from source. A notebook's working folder is its own, so
+# the repo's src folder is one level up.
+import os
+import sys
 
-# COMMAND ----------
-
-dbutils.library.restartPython()
+sys.path.insert(0, os.path.abspath("../src"))
 
 # COMMAND ----------
 
