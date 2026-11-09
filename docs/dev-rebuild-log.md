@@ -19,12 +19,12 @@ This file records every manual step, setting and challenge, so the rebuild can b
 | Lakebase project `bakehouse-params-dev` | `dab-data/resources/lakebase.yml` | The data bundle | Postgres 16, 0.5 to 2 CU, suspend after 60 seconds, 2 days history, tags |
 | Lakebase database `bakehouse` | `dab-data/resources/lakebase.yml` | The data bundle | Branch `production`. Its owner must be an existing role |
 | Unity Catalog registration `bakehouse_params_dev` | `dab-data/resources/lakebase.yml` | The data bundle (`postgres_catalogs`) | The ETL reads parameters through it with Spark SQL |
-| App `bakehouse-param-admin-dev` | `dab-compute/resources/app.yml` | Apps UI | MEDIUM compute, command `gunicorn app:server`, created stopped; Postgres and job resources; env vars below; then the self-stop grant |
+| App `bakehouse-param-admin-dev` | `dab-compute/resources/app.yml` | Apps UI | MEDIUM compute, created stopped; Postgres and job resources named as in `app.yml`; command and env vars come from `apps/param_admin/app.yaml`; then the self-stop grant |
 | App self-stop grant | `scripts/grant_app_self_manage.sh` | already a manual script | Run once after the app exists |
 | Cost tags | `presets.tags` and per-resource tags | by hand on each resource | `project`, `env`, `owner`; the bundle applied these everywhere |
 | Saved parameter values | Lakebase `params` schema | seeded by the app on first start | Anything changed in the app since the first deploy is lost on destroy |
 
-App environment: `PARAM_BACKEND`, `JOB_TRIGGER=databricks`, `ETL_JOB_ID` and `DAILY_RUN_JOB_ID` (from the job resources), `LAKEBASE_ENDPOINT`, `APP_NAME`, `IDLE_STOP_MINUTES`.
+App environment (now in `apps/param_admin/app.yaml`, because the portal has no field for the command or env vars): `PARAM_BACKEND`, `JOB_TRIGGER=databricks`, `ETL_JOB_ID` and `DAILY_RUN_JOB_ID` (from the job resources), `LAKEBASE_ENDPOINT`, `IDLE_STOP_MINUTES`.
 
 ## 2. Challenges expected before starting
 

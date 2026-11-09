@@ -198,3 +198,10 @@ Departures from `SPEC.md` and `CLAUDE_CODE_GUIDE.md`, and choices made along the
 - **Accepted cost.** A committed duplicate of `src/bakehouse_core`, so a commit that changes the package also changes the copy. `tests/test_stale_copy.py` now fails if the copy is missing or differs, and `app.py` still refuses to start locally on a stale copy. The bundle's artifact build still refreshes it at deploy.
 - **Parked.** A pre-commit hook to refresh and re-stage the copy automatically (noted in the README as recommended).
 - **Not yet proven.** Deploying the app from the Git folder path.
+
+## 2026-11-09: The app's command and env vars live in `app.yaml`
+
+- **Decision (Tim).** `apps/param_admin/app.yaml` holds the start command and env vars. The `config:` block is removed from `dab-compute/resources/app.yml`, which keeps only the app, its compute size and its resources (Postgres and the two jobs).
+- **Why.** The portal has no field for the command or env vars when an app is created by hand, and the platform reads them from `app.yaml` in the source folder. Keeping the bundle's `config:` as well would be two copies of the same settings. Starting from one source is cleaner, and the bundle can add what higher environments need later.
+- **`APP_NAME` dropped.** The app falls back to the platform's `DATABRICKS_APP_NAME`.
+- **Open for sandbox.** `LAKEBASE_ENDPOINT` in `app.yaml` names the dev project, so it needs a per-target value. Check in the docs whether a bundle can supply env vars alongside an `app.yaml` (and which wins) before the first sandbox deploy. The `idle_stop_minutes` variable no longer feeds the app, and the app's own value is a fixed `1`, the platform minimum.
