@@ -119,3 +119,61 @@ def test_catalog_read_repository_is_read_only_and_creates_nothing():
     assert spark.sql("SELECT name FROM sqlite_master").collect() == []
     with pytest.raises(PermissionError, match="read-only"):
         reader.save({"underperform_pct": "0.30"}, user="t")
+
+
+class _SparkWithErrorClasses(FakeSpark):
+    """Turns sqlite's "no such table" into the error Spark raises for a missing table."""
+
+    def sql(self, query, args=None):
+        try:
+            return super().sql(query, args)
+        except sqlite3.OperationalError as exc:
+            if "no such table" in str(exc):
+                raise RuntimeError("[TABLE_OR_VIEW_NOT_FOUND] The table cannot be found.") from exc
+            raise
+
+
+def test_catalog_read_repository_uses_the_seed_defaults_before_the_app_has_started():
+    reader = CatalogReadRepository(_SparkWithErrorClasses(), "params_cat")
+    assert reader.load_as_of(date(2024, 5, 1)) == model.defaults()
+    assert set(reader.versions_as_of(date(2024, 5, 1)).values()) == {1}
+    assert reader.used_defaults
+
+
+def test_catalog_read_repository_uses_defaults_when_the_tables_are_empty(repo):
+    for table in ("param_versions", "param_definitions"):
+        repo._sql(f"DELETE FROM cat.ops.{table}")
+    reader = CatalogReadRepository(repo._spark, "params_cat")
+    assert reader.load_as_of(date(2024, 5, 1)) == model.defaults()
+    assert reader.used_defaults
+
+
+def test_catalog_read_repository_does_not_use_defaults_when_there_is_a_store(repo):
+    reader = CatalogReadRepository(repo._spark, "params_cat")
+    reader.load_as_of(date(2024, 5, 1))
+    assert not reader.used_defaults
+
+
+def test_the_defaults_are_what_the_store_would_be_seeded_with(repo):
+    reader = CatalogReadRepository(_SparkWithErrorClasses(), "params_cat")
+    assert reader.versions_as_of(date(2024, 5, 1)) == repo.versions_as_of(date(2024, 5, 1))
+    assert reader.load_as_of(date(2024, 5, 1)) == repo.load_as_of(date(2024, 5, 1))
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "[CATALOG_NOT_FOUND] The catalog params_cat cannot be found.",
+        "[SCHEMA_NOT_FOUND] mentions CATALOG_NOT_FOUND too",
+        "connection refused",
+    ],
+)
+def test_other_errors_are_not_hidden_by_the_defaults(message):
+    class Broken(FakeSpark):
+        def sql(self, query, args=None):
+            raise RuntimeError(message)
+
+    reader = CatalogReadRepository(Broken(), "params_cat")
+    with pytest.raises(RuntimeError):
+        reader.load_as_of(date(2024, 5, 1))
+    assert not reader.used_defaults

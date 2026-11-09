@@ -1,3 +1,4 @@
+import json
 from datetime import date
 from decimal import Decimal
 
@@ -63,3 +64,15 @@ def test_requires_a_released_day(repo):
     store.clock = ClockState.initial()
     with pytest.raises(NoVirtualDateError):
         run_load_params(store, repo)
+
+
+def test_the_log_marks_a_run_that_used_the_seed_defaults(repo):
+    store = InMemoryOpsStore()
+    store.clock = ClockState(virtual_date=date(2024, 5, 3), seed=42)
+    normal = run_load_params(store, repo, run_id="a")
+    assert "defaults_used" not in json.loads(normal.details)
+
+    repo.used_defaults = True  # what CatalogReadRepository sets when the store is missing
+    marked = run_load_params(store, repo, run_id="b")
+    assert json.loads(marked.details)["defaults_used"] is True
+    assert snapshot.values_from_details(marked.details) == model.defaults()

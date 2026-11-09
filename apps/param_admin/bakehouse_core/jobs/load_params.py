@@ -36,6 +36,7 @@ def run_load_params(
         raise NoVirtualDateError("no virtual day has been released yet; run the simulator first")
     as_of = state.virtual_date
     values = repo.load_as_of(as_of)
+    versions = repo.versions_as_of(as_of)
     entry = RunLogEntry(
         run_id=run_id,
         job=JOB,
@@ -44,7 +45,9 @@ def run_load_params(
         finished_at=datetime.now(UTC),
         virtual_date=as_of,
         triggered_by=triggered_by,
-        details=snapshot.to_json(as_of, values, repo.versions_as_of(as_of)),
+        details=snapshot.to_json(
+            as_of, values, versions, defaults_used=getattr(repo, "used_defaults", False)
+        ),
     )
     store.log_run(entry)
     return entry

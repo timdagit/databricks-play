@@ -11,6 +11,7 @@ and serialises its saves, so this is accepted for the PoC.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from datetime import UTC, date, datetime
 from typing import Any
@@ -19,6 +20,13 @@ from bakehouse_core.io.ops_tables import ident
 from bakehouse_core.params import model
 from bakehouse_core.params.repository import ParamRepository, ParamValidationError, ParamVersion
 from bakehouse_core.params.schema import PARAMS_SCHEMA, SEED_EFFECTIVE_FROM
+
+log = logging.getLogger(__name__)
+
+# Spark error classes for a table or schema that is not there. A missing catalog is not on the
+# list on purpose: it means the Lakebase registration is broken, which must not look like a
+# store that has simply not been created yet.
+_NOT_THERE = ("TABLE_OR_VIEW_NOT_FOUND", "SCHEMA_NOT_FOUND")
 
 
 def _as_date(value: Any) -> date:
@@ -184,17 +192,42 @@ class CatalogReadRepository(DeltaRepository):
     """Read-only access to the parameters held in Lakebase, through its Unity Catalog catalog.
 
     The ETL reads them with Spark SQL, as spec section 4.5 describes. Only the app writes to
-    Lakebase, and it creates the tables, so setting up and saving are refused here.
+    Lakebase, and it creates and seeds the tables, so setting up and saving are refused here.
+
+    Until the app has started once, the tables do not exist. The ETL must not depend on that, so
+    a store that is missing (or empty) reads as the seed defaults at version 1, which is exactly
+    what the app seeds. `used_defaults` says whether that happened, and it is logged.
     """
 
     def __init__(self, spark: Any, catalog: str, schema: str = PARAMS_SCHEMA):
         super().__init__(spark, catalog, schema)
+        self.used_defaults = False
 
     def ensure_schema(self) -> None:
         """Nothing to create: the app owns the tables."""
 
     def ensure_tables(self) -> None:
         """Nothing to create: the app owns the tables."""
+
+    def _load(self, as_of: date | None) -> dict[str, tuple[int, str]]:
+        try:
+            rows = super()._load(as_of)
+        except Exception as exc:
+            text = str(exc)
+            if "CATALOG_NOT_FOUND" in text or not any(m in text for m in _NOT_THERE):
+                raise
+            rows = {}
+        if rows:
+            return rows
+        if not self.used_defaults:
+            log.warning(
+                "No parameters found in %s.%s yet (the app seeds them on its first start); "
+                "using the seed defaults, version 1.",
+                self._catalog,
+                self._schema,
+            )
+        self.used_defaults = True
+        return {d.key: (1, model.to_text(d.default)) for d in model.DEFINITIONS}
 
     def save(self, *args: Any, **kwargs: Any) -> dict[str, int]:
         raise PermissionError("the Lakebase catalog is read-only here; save through the app")
