@@ -190,3 +190,11 @@ Departures from `SPEC.md` and `CLAUDE_CODE_GUIDE.md`, and choices made along the
 - **`purge_on_delete` stays true.** This is a PoC with no data that matters, and `bundle destroy` should leave the workspace as clean as it can. Revisit it (a variable, false) if a target ever holds data worth keeping.
 - **Cross-bundle references.** A bundle cannot refer to another bundle's resources, so `app.yml` builds the branch, database and endpoint names from a `lakebase_project` variable (default `bakehouse-params-${bundle.target}`). `params_catalog` is now a variable in both bundles. Each default must match the other's, and the project id in `lakebase.yml` must match `lakebase_project`.
 - **Not yet proven.** The moved YAML has not been deployed from `dab-data`; it worked from the old bundle before the 2026-11-05 destroy.
+
+## 2026-11-09: The staged copy of `bakehouse_core` is committed
+
+- **Decision (Tim).** `apps/param_admin/bakehouse_core/` is tracked in Git, not ignored. This supersedes the earlier "generated, gitignored, added to the sync with `sync.include`" plan for the app, and `sync.include` is removed from `dab-compute/databricks.yml`.
+- **Why.** The dev app is deployed with `--source-code-path` at the workspace Git folder's `apps/param_admin`, and a Git folder has no gitignored files. Uploading the copy separately (`databricks sync`) was another easily forgotten step and a second copy of the source in the workspace. Running from the Git folder matches how it runs locally.
+- **Accepted cost.** A committed duplicate of `src/bakehouse_core`, so a commit that changes the package also changes the copy. `tests/test_stale_copy.py` now fails if the copy is missing or differs, and `app.py` still refuses to start locally on a stale copy. The bundle's artifact build still refreshes it at deploy.
+- **Parked.** A pre-commit hook to refresh and re-stage the copy automatically (noted in the README as recommended).
+- **Not yet proven.** Deploying the app from the Git folder path.

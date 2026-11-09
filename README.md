@@ -56,14 +56,16 @@ databricks apps stop bakehouse-param-admin-dev -p personal   # stop it when fini
 
 The app stops itself after `idle_stop_minutes` of inactivity (page loads and clicks count, the status polling does not). After the first deploy, run `bash scripts/grant_app_self_manage.sh` once so it is allowed to. Open it from the Apps page in the workspace. It signs you in with workspace SSO and records your email as `updated_by`. A save with the effective-from field blank applies to every virtual day. Press Rerun ETL to rebuild gold from the earliest date you saved, or Run next day to release and process one more virtual day. You can also run `bakehouse_etl` with `mode=recompute_gold` (and optionally `from_date=YYYY-MM-DD`). The ETL reads the saved values from Lakebase through its Unity Catalog registration.
 
-The app folder only gets its own files, so every deploy copies `bakehouse_core` into `apps/param_admin/` first (`scripts/stage_app.py`, run by the artifact build). That copy is gitignored.
+The app folder only gets its own files, so `bakehouse_core` is copied into `apps/param_admin/` (`scripts/stage_app.py`, also run by the bundle's artifact build). The copy is committed, so an app deployed from the workspace Git folder has it. Whenever `src/bakehouse_core` changes, run `python scripts/stage_app.py` and commit the copy; `tests/test_stale_copy.py` fails if you forget.
+
+**Recommended, not yet built:** a pre-commit hook that runs `scripts/stage_app.py` and re-stages `apps/param_admin/bakehouse_core`, so the copy can never be forgotten. It was parked for time.
 
 ## How `bakehouse_core` reaches each part
 
 | Where it runs | How it gets the package | Status |
 |---|---|---|
 | ETL and simulator jobs | The bundle builds a wheel (`uv build --wheel`), uploads it to the `ops.artifacts` volume (`workspace.artifact_path`), and the serverless job environment installs it at the start of each run | Proven |
-| The Dash app | A staged copy in `apps/param_admin/`, made by `scripts/stage_app.py` at deploy | Proven |
+| The Dash app | A committed copy in `apps/param_admin/`, made by `scripts/stage_app.py` | Proven (as an uploaded copy); from the Git folder not yet |
 | Notebooks 02 and 03, option 1: the wheel from the volume | `%pip install` of the wheel from the `ops.artifacts` volume, then a restart. This is what the notebooks do now, with no fallback | Proven |
 | Notebooks 02 and 03, option 2: the repo's `src` folder | In a Git folder, add `../src` to `sys.path` before importing. The notebooks used this first, and no package was installed then | Proven |
 | Notebooks run as bundle `notebook_task`s | Needs the wheel in the job environment, or `src` synced next to the notebook | Not yet built |
