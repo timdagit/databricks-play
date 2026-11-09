@@ -64,7 +64,9 @@ def test_skipped_when_there_is_no_src_next_to_the_app(stale_copy, layout):
 
 
 def test_the_real_staged_copy_is_current():
-    # Fails if a leftover apps/param_admin/bakehouse_core is out of date with src/.
+    # The copy is committed so the app can run from the Git folder. Fails if it is missing or
+    # out of date with src/: run `python scripts/stage_app.py` and commit the result.
+    assert (APP_DIR / "bakehouse_core").is_dir(), "run python scripts/stage_app.py"
     spec = importlib.util.spec_from_file_location("stale_copy", APP_DIR / "stale_copy.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

@@ -36,5 +36,5 @@ def check(app_dir: Path, env: Mapping[str, str] = os.environ) -> None:
     if copy.is_dir() and source.is_dir() and differs(copy, source):
         raise SystemExit(
             f"The staged copy {copy} differs from {source}, so the app would run old code.\n"
-            f"Delete it (rm -rf {copy}) or refresh it with `python scripts/stage_app.py`."
+            "Refresh it with `python scripts/stage_app.py` and commit the result."
         )

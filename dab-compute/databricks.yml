@@ -37,9 +37,6 @@ sync:
     - .
     - ../apps
     - ../lakeflow
-  # The staged copy is gitignored, so it has to be named here to be uploaded.
-  include:
-    - ../apps/param_admin/bakehouse_core/**
 
 variables:
   catalog:

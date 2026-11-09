@@ -1,12 +1,14 @@
 """Copy the `bakehouse_core` package into the app folder before a bundle deploy.
 
 A Databricks app only gets the files in its own folder, so the shared package has to be
-inside it. The copy is generated and gitignored. The bundle runs this on every deploy (it is
-part of the `bakehouse_core` artifact build), so it always matches the deployed jobs.
+inside it. The copy is generated but committed, so an app deployed from the workspace Git
+folder has it too. Run this script and commit the result whenever `src/bakehouse_core`
+changes; `tests/test_stale_copy.py` fails if you forget. The bundle also runs it on every
+deploy (it is part of the `bakehouse_core` artifact build).
 
-Heads up for local work: with this copy present, `python apps/param_admin/app.py` imports it
-instead of `src/`. `app.py` refuses to start locally if the copy differs from `src/`
-(`apps/param_admin/stale_copy.py`); delete the copy, or run this script again, to carry on.
+Heads up for local work: `python apps/param_admin/app.py` imports this copy instead of `src/`.
+`app.py` refuses to start locally if the copy differs from `src/`
+(`apps/param_admin/stale_copy.py`); run this script again to carry on.
 """
 
 from __future__ import annotations
