@@ -205,3 +205,9 @@ Departures from `SPEC.md` and `CLAUDE_CODE_GUIDE.md`, and choices made along the
 - **Why.** The portal has no field for the command or env vars when an app is created by hand, and the platform reads them from `app.yaml` in the source folder. Keeping the bundle's `config:` as well would be two copies of the same settings. Starting from one source is cleaner, and the bundle can add what higher environments need later.
 - **`APP_NAME` dropped.** The app falls back to the platform's `DATABRICKS_APP_NAME`.
 - **Open for sandbox.** `LAKEBASE_ENDPOINT` in `app.yaml` names the dev project, so it needs a per-target value. Check in the docs whether a bundle can supply env vars alongside an `app.yaml` (and which wins) before the first sandbox deploy. The `idle_stop_minutes` variable no longer feeds the app, and the app's own value is a fixed `1`, the platform minimum.
+
+## 2026-11-09: Notebooks 02 and 03 run from source in dev
+
+- **Decision (Tim).** The two Python notebooks put the repo's `src` folder on `sys.path` and import `bakehouse_core` from there. This reverses the earlier choice to `%pip install` the wheel from the `ops.artifacts` volume.
+- **Why.** Dev compute no longer deploys a wheel (the rebuild runs everything from source), so the volume has no wheel and the notebooks failed. Running from source matches the dev jobs and the app, and a Git pull is enough to pick up changes. The SQL notebook was unaffected.
+- **Not done.** A switch so that deployed notebooks can use the wheel. There is no use case for deployed notebooks yet, so it is not worth building. The notebooks must be opened from the Git folder.

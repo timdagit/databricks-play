@@ -64,22 +64,13 @@ The app folder only gets its own files, so `bakehouse_core` is copied into `apps
 
 | Where it runs | How it gets the package | Status |
 |---|---|---|
-| ETL and simulator jobs | The bundle builds a wheel (`uv build --wheel`), uploads it to the `ops.artifacts` volume (`workspace.artifact_path`), and the serverless job environment installs it at the start of each run | Proven |
-| The Dash app | A committed copy in `apps/param_admin/`, made by `scripts/stage_app.py` | Proven (as an uploaded copy); from the Git folder not yet |
-| Notebooks 02 and 03, option 1: the wheel from the volume | `%pip install` of the wheel from the `ops.artifacts` volume, then a restart. This is what the notebooks do now, with no fallback | Proven |
-| Notebooks 02 and 03, option 2: the repo's `src` folder | In a Git folder, add `../src` to `sys.path` before importing. The notebooks used this first, and no package was installed then | Proven |
-| Notebooks run as bundle `notebook_task`s | Needs the wheel in the job environment, or `src` synced next to the notebook | Not yet built |
+| ETL and simulator jobs (sandbox and above) | The bundle builds a wheel (`uv build --wheel`), uploads it to the `ops.artifacts` volume (`workspace.artifact_path`), and the serverless job environment installs it at the start of each run | Proven before the dev rebuild |
+| ETL and simulator jobs (dev) | `jobs/run_from_src.py` finds `src` in the workspace Git folder and runs the package from source | Proven |
+| The Dash app | A committed copy in `apps/param_admin/`, made by `scripts/stage_app.py` | Proven, including deployed from the workspace Git folder in dev |
+| Notebooks 02 and 03 (dev) | In the workspace Git folder, the first cell puts `../src` on `sys.path`, so they run the same source as the dev jobs and pick up changes on a Git pull | Proven earlier, re-proof pending |
+| Notebooks run as bundle `notebook_task`s, or deployed from the wheel | Needs the wheel in the job environment, or `src` synced next to the notebook | Not built: no use case for deployed notebooks yet |
 
-Option 2 needs the notebook to sit in a Git folder next to `src`. It picks up code changes on a Git pull, with no deploy. Option 1 needs a deploy to refresh the wheel, but it works wherever the volume can be read and it is the same package the jobs run. To use option 2, replace the install and restart cells with:
-
-```python
-import os
-import sys
-
-sys.path.append(os.path.abspath("../src"))
-```
-
-The volume has to exist before a deploy can upload to it, so it was created by an earlier deploy than the one that set `artifact_path`. The notebook's install path names the catalog and the wheel version, so it needs editing if either changes. A notebook imported as a single file has neither the volume install nor the `src` folder, so it cannot import the package.
+The notebooks have to be opened from the Git folder, next to `src`. A notebook imported as a single file has no `src` folder, so it cannot import the package. They used a wheel installed from the `ops.artifacts` volume for a while, and went back to source for dev to match the jobs and the app. If deployed notebooks ever need the wheel, make the choice configurable rather than editing the cells.
 
 ## Schema names: why development mode is off
 
