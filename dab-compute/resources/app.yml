@@ -25,7 +25,7 @@ resources:
           - name: DAILY_RUN_JOB_ID
             value_from: daily-run-job
           - name: LAKEBASE_ENDPOINT
-            value: projects/${resources.postgres_projects.params_project.project_id}/branches/production/endpoints/primary
+            value: projects/${var.lakebase_project}/branches/production/endpoints/primary
           # Stop the app after this many idle minutes. It stops itself through the Apps API,
           # which needs its name and CAN_MANAGE on itself (granted once by
           # scripts/grant_app_self_manage.sh, since a resource cannot refer to its own outputs).
@@ -37,8 +37,9 @@ resources:
       resources:
         - name: lakebase
           postgres:
-            branch: projects/${resources.postgres_projects.params_project.project_id}/branches/production
-            database: projects/${resources.postgres_projects.params_project.project_id}/branches/production/databases/bakehouse
+            # The project and database come from the data bundle, so they are named, not referenced.
+            branch: projects/${var.lakebase_project}/branches/production
+            database: projects/${var.lakebase_project}/branches/production/databases/bakehouse
             permission: CAN_CONNECT_AND_CREATE
         - name: etl-job
           job:

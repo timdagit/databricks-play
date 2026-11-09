@@ -20,8 +20,9 @@ resources:
           value: ${bundle.target}
         - key: owner
           value: tim
-      # dev only: `bundle destroy` removes the project for good instead of soft-deleting it.
-      # Make this a variable if test or prod targets are added.
+      # `bundle destroy` removes the project for good instead of soft-deleting it, so a destroy
+      # leaves the workspace clean. The saved parameters are demonstration data. Revisit this
+      # (a variable, false) if a target ever holds data that matters.
       purge_on_delete: true
 
   # Declared here, not created by the catalog, so its resource name is fixed

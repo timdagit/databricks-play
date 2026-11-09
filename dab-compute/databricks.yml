@@ -1,5 +1,6 @@
-# The compute bundle: jobs, the app, Lakebase and the Designer tasks. The schemas and volumes it
-# uses come from the data bundle (../dab-data), which has to be deployed first.
+# The compute bundle: jobs, the app and the Designer tasks. The schemas, volumes and Lakebase
+# (project, database and Unity Catalog registration) it uses come from the data bundle
+# (../dab-data), which has to be deployed first.
 #
 # Dev compute is hand-built in the portal and does not use this bundle. It is the reference the
 # hand-built jobs are compared with, and the source for sandbox and above. Run the commands from
@@ -51,8 +52,11 @@ variables:
     description: Run timeout for jobs. Only catches runaways, since a job has no idle state.
     default: 900
   params_catalog:
-    description: Unity Catalog name that Lakebase is registered as, where the ETL reads parameters.
+    description: Unity Catalog name that Lakebase is registered as, where the ETL reads parameters. Must match the data bundle's variable of the same name.
     default: bakehouse_params_${bundle.target}
+  lakebase_project:
+    description: Lakebase project id, created by the data bundle. Must match the project_id in dab-data/resources/lakebase.yml.
+    default: bakehouse-params-${bundle.target}
   param_backend:
     description: Where the ETL reads parameters from, `lakebase` (its catalog) or `delta` (ops tables).
     default: lakebase

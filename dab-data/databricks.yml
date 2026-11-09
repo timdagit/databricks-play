@@ -1,10 +1,11 @@
-# The data bundle: the schemas and volumes that jobs, notebooks and the app read and write.
+# The data bundle: the schemas and volumes that jobs, notebooks and the app read and write, and
+# the Lakebase project that holds the saved parameters.
 #
 # Unity Catalog objects cannot be exported from the portal into Git, so they are always created
 # from a bundle, in every environment including dev. This bundle is kept apart from the compute
 # bundle so that rebuilding or destroying jobs and apps never touches the data. The reverse is
 # not true: destroying THIS bundle deletes every table in its schemas, including tables it did
-# not create.
+# not create, and (in dev) purges the Lakebase project with the saved parameters.
 #
 # Deploy this first. Run the commands from this folder:
 #   cd dab-data
@@ -20,6 +21,9 @@ variables:
   catalog:
     description: Unity Catalog catalog for this target (created in az-inf).
     default: bakehouse_dev
+  params_catalog:
+    description: Unity Catalog name that Lakebase is registered as, where the ETL reads parameters. Must match the compute bundle's variable of the same name.
+    default: bakehouse_params_${bundle.target}
 
 presets:
   tags:
