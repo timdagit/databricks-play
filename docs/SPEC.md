@@ -235,6 +235,8 @@ Cross-field rules, such as silver below gold, are validated in `bakehouse_core.p
 
 ### 4.7 Comparison plan
 
+> **Out of scope for the demo (2026-11-09).** The demo runs on Lakebase only, so the Delta backend in the app, this comparison and notebook `04_backend_comparison` are not built. See `docs/decisions.md`.
+
 Both backends run in `test` for 14 virtual days. A small exerciser script makes 20 reads and 5 saves per day.
 
 | Measure | How |

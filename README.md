@@ -13,7 +13,7 @@ It exercises Python ETL jobs, Lakeflow Designer, Databricks Apps (a Dash app tha
 
 Scope: `dev` only. The spec's `test` and `prod` targets, service principals and deploy workflows (build plan workstream 12) are out of scope for this build.
 
-Early. Built and working on Databricks: the `dev` bundle (schemas, volumes), the simulator and the reset job. The ETL (`load_params`, `silver_build`, `gold_build`, chained by `daily_run`) runs on Databricks, with the Delta parameter store. Built and tested locally: the SQLite parameter store and its backend factory. The parameter admin app runs locally (SQLite, or Postgres in Docker) and on Databricks Apps with Lakebase, and the ETL reads the saved parameters from Lakebase. The run buttons start the real jobs, and the app stops itself after a minute of inactivity. Notebooks 01 (SQL), 02 (data-quality report) and 03 (promo what-if, with charts) run in the workspace. Not built yet: the Delta backend in the app, Designer, and the backend comparison notebook.
+Early. Built and working on Databricks: the `dev` bundle (schemas, volumes), the simulator and the reset job. The ETL (`load_params`, `silver_build`, `gold_build`, chained by `daily_run`) runs on Databricks, first with the Delta parameter store and now with Lakebase. Built and tested locally: the SQLite parameter store and its backend factory. The parameter admin app runs locally (SQLite, or Postgres in Docker) and on Databricks Apps with Lakebase, and the ETL reads the saved parameters from Lakebase. The run buttons start the real jobs, and the app stops itself after a minute of inactivity. Notebooks 01 (SQL), 02 (data-quality report) and 03 (promo what-if, with charts) run in the workspace. Out of scope for the demo: the Delta backend in the app and the backend comparison.
 
 ## Local development
 
@@ -96,7 +96,7 @@ Variables (defaults are placeholders, override with `--var` or `BUNDLE_VAR_<name
 | `catalog` | Unity Catalog catalog for the target |
 | `idle_stop_minutes` | Idle minutes before anything that bills while running stops |
 | `job_timeout_seconds` | Run timeout for jobs |
-| `param_backend` | Where the ETL reads parameters: `lakebase` (default) or `delta` |
+| `param_backend` | Where the ETL reads parameters: `lakebase` (the default, and the only one the demo uses) or `delta` (code kept, not used) |
 | `params_catalog` | Unity Catalog name that Lakebase is registered as |
 | `job_duration_warning_seconds` | A run longer than this raises a health warning |
 

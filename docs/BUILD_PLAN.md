@@ -211,6 +211,8 @@ The workstreams below are in a sensible dependency order. Reorder, merge or spli
 
 ## 10. Delta backend
 
+**Out of scope for the demo (2026-11-09, see `docs/decisions.md`).** The demo uses Lakebase only. The Delta repository stays in the code and is not extended.
+
 **Outcome:** the same app behaviour on Delta, through a serverless 2X-Small warehouse with `auto_stop_mins` at 1, switchable per target.
 
 **Guidance**
@@ -253,6 +255,8 @@ The workstreams below are in a sensible dependency order. Reorder, merge or spli
 ---
 
 ## 13. Comparison
+
+**Out of scope for the demo (2026-11-09, see `docs/decisions.md`).** It needs the Delta backend in the app (workstream 10), which is also dropped.
 
 **Outcome:** `docs/backend-comparison.md` compares Lakebase and Delta on latency, cost, local development experience, governance and code complexity. It uses a scripted exerciser in `dev` over 14 virtual days (it was planned for `test`, which is out of scope), and ends with a recommendation that notes when the spec §9 options would change it.
 
