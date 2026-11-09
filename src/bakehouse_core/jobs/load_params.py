@@ -53,15 +53,19 @@ def run_load_params(
     return entry
 
 
-def main(argv: list[str] | None = None) -> None:
-    """Entry point for the wheel task (`bakehouse-load-params`)."""
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Record the parameters for this ETL run.")
     parser.add_argument("--catalog", required=True)
-    parser.add_argument("--param-backend", default="delta", choices=["delta", "lakebase"])
+    parser.add_argument("--param-backend", default="lakebase", choices=["delta", "lakebase"])
     parser.add_argument("--params-catalog", default="")
     parser.add_argument("--run-id", default="")
     parser.add_argument("--triggered-by", default="manual")
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Entry point for the wheel task (`bakehouse-load-params`)."""
+    args = build_parser().parse_args(argv)
 
     from pyspark.sql import SparkSession
 

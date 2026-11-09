@@ -145,19 +145,23 @@ def run_gold_build(
     return details
 
 
-def main(argv: list[str] | None = None) -> None:
-    """Entry point for the wheel task (`bakehouse-gold-build`)."""
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Build the gold tables.")
     parser.add_argument("--catalog", required=True)
     parser.add_argument("--mode", default="incremental", choices=MODES)
-    parser.add_argument("--param-backend", default="delta", choices=["delta", "lakebase"])
+    parser.add_argument("--param-backend", default="lakebase", choices=["delta", "lakebase"])
     parser.add_argument("--params-catalog", default="")
     parser.add_argument(
         "--from-date", default="", help="recompute_gold only: first day to rebuild (YYYY-MM-DD)"
     )
     parser.add_argument("--run-id", default="")
     parser.add_argument("--triggered-by", default="manual")
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Entry point for the wheel task (`bakehouse-gold-build`)."""
+    args = build_parser().parse_args(argv)
 
     from pyspark.sql import SparkSession
 
