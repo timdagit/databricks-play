@@ -1,4 +1,8 @@
 # The parameter admin app on Databricks Apps (spec 4.4). It runs as its own service principal.
+# Its start command and env vars are in apps/param_admin/app.yaml, which the platform reads from
+# the source folder. This bundle only declares the app and what it may use. Still to settle
+# before sandbox: LAKEBASE_ENDPOINT in that file names the dev project, so it needs a value per
+# target, and whether the bundle can set it (docs/decisions.md).
 # Deploying creates it stopped, so nothing bills until you start it (run from dab-compute/):
 #   databricks bundle run param_admin -t dev -p personal
 # and stop it again when finished:
@@ -12,28 +16,6 @@ resources:
       compute_size: MEDIUM
       lifecycle:
         started: false
-      config:
-        command: ["gunicorn", "app:server"]
-        env:
-          - name: PARAM_BACKEND
-            value: lakebase
-          - name: JOB_TRIGGER
-            value: databricks
-          # The ids of the jobs the app may run, from its job resources below.
-          - name: ETL_JOB_ID
-            value_from: etl-job
-          - name: DAILY_RUN_JOB_ID
-            value_from: daily-run-job
-          - name: LAKEBASE_ENDPOINT
-            value: projects/${var.lakebase_project}/branches/production/endpoints/primary
-          # Stop the app after this many idle minutes. It stops itself through the Apps API,
-          # which needs its name and CAN_MANAGE on itself (granted once by
-          # scripts/grant_app_self_manage.sh, since a resource cannot refer to its own outputs).
-          # The name is repeated here because a resource cannot refer to its own `name` either.
-          - name: APP_NAME
-            value: bakehouse-param-admin-${bundle.target}
-          - name: IDLE_STOP_MINUTES
-            value: "${var.idle_stop_minutes}"
       resources:
         - name: lakebase
           postgres:
