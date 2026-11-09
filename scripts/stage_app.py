@@ -5,7 +5,8 @@ inside it. The copy is generated and gitignored. The bundle runs this on every d
 part of the `bakehouse_core` artifact build), so it always matches the deployed jobs.
 
 Heads up for local work: with this copy present, `python apps/param_admin/app.py` imports it
-instead of `src/`. Delete `apps/param_admin/bakehouse_core` if you want local edits picked up.
+instead of `src/`. `app.py` refuses to start locally if the copy differs from `src/`
+(`apps/param_admin/stale_copy.py`); delete the copy, or run this script again, to carry on.
 """
 
 from __future__ import annotations

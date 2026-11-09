@@ -20,10 +20,19 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from bakehouse_core.config.identity import LakebaseTokenProvider
-from bakehouse_core.jobs.trigger import DatabricksJobTrigger, FakeJobTrigger, JobTrigger
-from bakehouse_core.params.factory import get_repository
-from bakehouse_core.webapp import create_app
+from stale_copy import check as refuse_stale_copy
+
+# Before the package is imported, so a stale staged copy is caught rather than used.
+refuse_stale_copy(Path(__file__).resolve().parent)
+
+from bakehouse_core.config.identity import LakebaseTokenProvider  # noqa: E402
+from bakehouse_core.jobs.trigger import (  # noqa: E402
+    DatabricksJobTrigger,
+    FakeJobTrigger,
+    JobTrigger,
+)
+from bakehouse_core.params.factory import get_repository  # noqa: E402
+from bakehouse_core.webapp import create_app  # noqa: E402
 
 
 def _trigger() -> JobTrigger:
