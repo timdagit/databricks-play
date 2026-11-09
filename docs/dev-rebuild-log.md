@@ -16,9 +16,9 @@ This file records every manual step, setting and challenge, so the rebuild can b
 | Job `ops_reset` | `dab-compute/resources/jobs.yml` | Jobs UI | `jobs/run_from_src.py reset ...`; parameters `level`, `confirm`, `requested_by`; the confirm value must equal the target name |
 | Job `bakehouse_etl` | `dab-compute/resources/etl.yml` | Jobs UI | Tasks `load_params`, `silver_build`, `gold_build` (`jobs/run_from_src.py` with `load-params`, `silver-build`, `gold-build`) and `review_explorer` (notebook task); parameters `mode`, `from_date`, `triggered_by`; duration health rule; params passed as `--catalog`, `--param-backend`, `--params-catalog` |
 | Job `daily_run` | `dab-compute/resources/etl.yml` | Jobs UI | `run_job_task`s for the simulator and the ETL; parameters `days`, `scenarios`, `etl_mode`, `triggered_by`; daily schedule, paused. A parent's parameters are pushed down to child jobs by name |
-| Lakebase project `bakehouse-params-dev` | `dab-compute/resources/lakebase.yml` | Lakebase UI | Postgres 16, 0.5 to 2 CU, suspend after 60 seconds, 2 days history, tags |
-| Lakebase database `bakehouse` | `dab-compute/resources/lakebase.yml` | Lakebase UI or SQL | Branch `production`. Its owner must be an existing role |
-| Unity Catalog registration `bakehouse_params_dev` | `dab-compute/resources/lakebase.yml` | to find out | The ETL reads parameters through it with Spark SQL |
+| Lakebase project `bakehouse-params-dev` | `dab-data/resources/lakebase.yml` | The data bundle | Postgres 16, 0.5 to 2 CU, suspend after 60 seconds, 2 days history, tags |
+| Lakebase database `bakehouse` | `dab-data/resources/lakebase.yml` | The data bundle | Branch `production`. Its owner must be an existing role |
+| Unity Catalog registration `bakehouse_params_dev` | `dab-data/resources/lakebase.yml` | The data bundle (`postgres_catalogs`) | The ETL reads parameters through it with Spark SQL |
 | App `bakehouse-param-admin-dev` | `dab-compute/resources/app.yml` | Apps UI | MEDIUM compute, command `gunicorn app:server`, created stopped; Postgres and job resources; env vars below; then the self-stop grant |
 | App self-stop grant | `scripts/grant_app_self_manage.sh` | already a manual script | Run once after the app exists |
 | Cost tags | `presets.tags` and per-resource tags | by hand on each resource | `project`, `env`, `owner`; the bundle applied these everywhere |
@@ -31,7 +31,7 @@ App environment: `PARAM_BACKEND`, `JOB_TRIGGER=databricks`, `ETL_JOB_ID` and `DA
 - **Dev runs from source, so each job passes its name first to `jobs/run_from_src.py`.** The script finds `src` from its own location. `__file__` does not exist on serverless, which runs the file with `exec(compile(...))` (first run: `NameError`), so it uses `main.__code__.co_filename` instead, which keeps the real path. A test runs the file that way.
 
 - **The app needs `bakehouse_core`, and its staged copy is gitignored.** The bundle copies the package into `apps/param_admin/` at deploy. A Git folder has no such copy. Options to try: the wheel as an app dependency, or committing the copy.
-- **The Unity Catalog registration of Lakebase** has no known portal route yet.
+- **The Unity Catalog registration of Lakebase** had no known portal route, so Lakebase moved to the data bundle (`postgres_catalogs`), which declares it. Unproven until the first deploy from `dab-data`.
 - **Tags are not applied by presets.** Each hand-built resource needs them set, or billing attribution is lost.
 - **Job and app IDs** that the bundle wired through `value_from` and `${resources...}` become manual settings.
 - **Destroy may not remove everything,** for example schemas holding tables the bundle does not manage.
@@ -60,10 +60,10 @@ Filled in as each step is done, with the setting used and anything unexpected.
 
 Each step is checked before the next. The ETL is tested first with the Delta parameter backend (`--param-backend delta`), so the jobs can be proven before Lakebase exists.
 
-1. Deploy the data bundle (`dab-data/`): schemas and volumes.
+1. Deploy the data bundle (`dab-data/`): schemas and volumes. Lakebase joined it on 2026-11-09, so a second deploy of the data bundle creates the Lakebase project, database and Unity Catalog registration (step 4 below).
 2. (Wheel: deferred. Dev jobs run from source.)
 3. Jobs: `simulator`, `ops_reset`, `bakehouse_etl`, then `daily_run`. Run them with the Delta backend.
-4. Lakebase project, database and Unity Catalog registration. Switch the ETL to Lakebase.
+4. Lakebase project, database and Unity Catalog registration: deploy the data bundle again. Switch the ETL to Lakebase.
 5. The app, with its resources and environment variables. Then the self-stop grant.
 6. The `review_explorer` task.
 7. Seed with `ops_reset` and `daily_run`, and check the gold tables, the app and `review_explorer`.

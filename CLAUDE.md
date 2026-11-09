@@ -37,9 +37,10 @@ deploy. Record each departure in `docs/decisions.md`.
   work around a block.
 
 ## Where things live
-- Two bundles (spec §9.3). `dab-data/` holds the schemas and volumes and is
-  deployed to every environment, dev included. The compute bundle (jobs, app,
-  Lakebase, Designer tasks) is in `dab-compute/` (`bundle.name: bakehouse`).
+- Two bundles (spec §9.3). `dab-data/` holds the schemas, volumes and the
+  Lakebase project (database and Unity Catalog registration) and is deployed
+  to every environment, dev included. The compute bundle (jobs, app, Designer
+  tasks) is in `dab-compute/` (`bundle.name: bakehouse`).
   Run bundle commands from inside each bundle folder. Dev compute is
   hand-built from the workspace Git folder and runs code from source
   (`jobs/run_from_src.py`, with `jobs/base_environment.yml` listing its

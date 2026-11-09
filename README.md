@@ -47,7 +47,7 @@ Settings are environment variables: `PARAM_BACKEND`, `DATABASE_URL`, `JOB_TRIGGE
 
 ## The parameter app on Databricks
 
-`bundle deploy` creates the Lakebase project (scale to zero after 60 seconds, 0.5 to 2 CU), registers it in Unity Catalog, and creates the app **stopped**. The app bills for compute only while it runs.
+Deploying the data bundle creates the Lakebase project (scale to zero after 60 seconds, 0.5 to 2 CU) and registers it in Unity Catalog. Deploying the compute bundle creates the app **stopped**. The app bills for compute only while it runs.
 
 ```bash
 databricks bundle run param_admin -t dev -p personal    # start it (a minute or two)
@@ -94,7 +94,7 @@ This project switches that off, so schema names are always `bronze`, `silver`, `
 
 Commands use the `personal` Databricks CLI profile (`-p personal`), and no workspace identifiers are stored in the repo.
 
-There are two bundles, and each command runs from inside its folder: `cd dab-data` for the schemas and volumes (deploy this first), `cd dab-compute` for jobs, the app and Lakebase. In `dev` the compute is hand-built in the portal instead (see `docs/dev-rebuild-log.md`), so the compute commands below apply from `sandbox` upwards, and `-t dev` in them is a leftover that this README will lose when sandbox is built.
+There are two bundles, and each command runs from inside its folder: `cd dab-data` for the schemas, volumes and Lakebase (deploy this first), `cd dab-compute` for jobs and the app. In `dev` the compute is hand-built in the portal instead (see `docs/dev-rebuild-log.md`), so the compute commands below apply from `sandbox` upwards, and `-t dev` in them is a leftover that this README will lose when sandbox is built.
 
 Variables (defaults are placeholders, override with `--var` or `BUNDLE_VAR_<name>`):
 
@@ -129,4 +129,4 @@ databricks bundle run ops_reset -t dev -p personal --params level=data,confirm=d
 
 Scenarios: `late_files`, `duplicates`, `null_spike`, `underperforming_franchise`, `negative_review_burst`.
 
-The jobs run on serverless compute. `daily_run` has a schedule, but it is paused, so nothing runs or costs money until you start it. `databricks bundle destroy -t dev -p personal` removes everything the bundle created, including the Lakebase project and its data (`purge_on_delete` is true in dev).
+The jobs run on serverless compute. `daily_run` has a schedule, but it is paused, so nothing runs or costs money until you start it. `databricks bundle destroy -t dev -p personal` removes everything the bundle created. In `dab-data` that includes every table in its schemas and the Lakebase project with its data (`purge_on_delete` is true), so a destroy leaves the workspace clean.
